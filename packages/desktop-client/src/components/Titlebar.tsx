@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { Routes, Route, useLocation } from 'react-router-dom';
 
+import { css } from 'glamor';
+
 import * as Platform from 'loot-core/src/client/platform';
 import * as queries from 'loot-core/src/client/queries';
 import { listen } from 'loot-core/src/platform/client/fetch';
@@ -9,8 +11,9 @@ import { isDevelopmentEnvironment } from 'loot-core/src/shared/environment';
 
 import { useActions } from '../hooks/useActions';
 import { useGlobalPref } from '../hooks/useGlobalPref';
-import { useLocalPref } from '../hooks/useLocalPref';
+import { useMetadataPref } from '../hooks/useMetadataPref';
 import { useNavigate } from '../hooks/useNavigate';
+import { useSyncedPref } from '../hooks/useSyncedPref';
 import { SvgArrowLeft } from '../icons/v1';
 import {
   SvgAlertTriangle,
@@ -43,7 +46,7 @@ function UncategorizedButton() {
   return (
     <Link
       variant="button"
-      type="bare"
+      buttonVariant="bare"
       to="/accounts/uncategorized"
       style={{
         color: theme.errorText,
@@ -59,15 +62,16 @@ type PrivacyButtonProps = {
 };
 
 function PrivacyButton({ style }: PrivacyButtonProps) {
-  const [isPrivacyEnabled, setPrivacyEnabledPref] =
-    useLocalPref('isPrivacyEnabled');
+  const [isPrivacyEnabledPref, setPrivacyEnabledPref] =
+    useSyncedPref('isPrivacyEnabled');
+  const isPrivacyEnabled = String(isPrivacyEnabledPref) === 'true';
 
   const privacyIconStyle = { width: 15, height: 15 };
 
   useHotkeys(
     'shift+ctrl+p, shift+cmd+p, shift+meta+p',
     () => {
-      setPrivacyEnabledPref(!isPrivacyEnabled);
+      setPrivacyEnabledPref(String(!isPrivacyEnabled));
     },
     {
       preventDefault: true,
@@ -80,7 +84,7 @@ function PrivacyButton({ style }: PrivacyButtonProps) {
     <Button
       variant="bare"
       aria-label={`${isPrivacyEnabled ? 'Disable' : 'Enable'} privacy mode`}
-      onPress={() => setPrivacyEnabledPref(!isPrivacyEnabled)}
+      onPress={() => setPrivacyEnabledPref(String(!isPrivacyEnabled))}
       style={style}
     >
       {isPrivacyEnabled ? (
@@ -97,7 +101,7 @@ type SyncButtonProps = {
   isMobile?: boolean;
 };
 function SyncButton({ style, isMobile = false }: SyncButtonProps) {
-  const [cloudFileId] = useLocalPref('cloudFileId');
+  const [cloudFileId] = useMetadataPref('cloudFileId');
   const { sync } = useActions();
 
   const [syncing, setSyncing] = useState(false);
@@ -198,21 +202,23 @@ function SyncButton({ style, isMobile = false }: SyncButtonProps) {
     <Button
       variant="bare"
       aria-label="Sync"
-      style={({ isHovered, isPressed }) => ({
-        ...(isMobile
-          ? {
-              ...style,
-              WebkitAppRegion: 'none',
-              ...mobileIconStyle,
-            }
-          : {
-              ...style,
-              WebkitAppRegion: 'none',
-              color: desktopColor,
-            }),
-        ...(isHovered ? hoveredStyle : {}),
-        ...(isPressed ? activeStyle : {}),
-      })}
+      className={String(
+        css({
+          ...(isMobile
+            ? {
+                ...style,
+                WebkitAppRegion: 'none',
+                ...mobileIconStyle,
+              }
+            : {
+                ...style,
+                WebkitAppRegion: 'none',
+                color: desktopColor,
+              }),
+          '&[data-hovered]': hoveredStyle,
+          '&[data-pressed]': activeStyle,
+        }),
+      )}
       onPress={sync}
     >
       {isMobile ? (
