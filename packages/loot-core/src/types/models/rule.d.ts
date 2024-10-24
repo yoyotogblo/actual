@@ -1,8 +1,8 @@
 import { type ScheduleEntity } from './schedule';
 
 export interface NewRuleEntity {
-  stage: string;
-  conditionsOp: 'any' | 'and';
+  stage: 'pre' | null | 'post';
+  conditionsOp: 'or' | 'and';
   conditions: RuleConditionEntity[];
   actions: RuleActionEntity[];
   tombstone?: boolean;
@@ -25,6 +25,7 @@ export type RuleConditionOp =
   | 'lte'
   | 'contains'
   | 'doesNotContain'
+  | 'hasTags'
   | 'matches';
 
 type FieldValueTypes = {
@@ -34,8 +35,11 @@ type FieldValueTypes = {
   date: string;
   notes: string;
   payee: string;
+  payee_name: string;
   imported_payee: string;
   saved: string;
+  cleared: boolean;
+  reconciled: boolean;
 };
 
 type BaseConditionEntity<
@@ -54,8 +58,9 @@ type BaseConditionEntity<
     year?: boolean;
   };
   conditionsOp?: string;
-  type?: 'id' | 'boolean' | 'date' | 'number';
+  type?: 'id' | 'boolean' | 'date' | 'number' | 'string';
   customName?: string;
+  queryFilter?: Record<string, { $oneof: string[] }>;
 };
 
 export type RuleConditionEntity =
@@ -96,6 +101,7 @@ export type RuleConditionEntity =
       | 'contains'
       | 'doesNotContain'
       | 'matches'
+      | 'hasTags'
     >
   | BaseConditionEntity<
       'payee',
@@ -124,13 +130,16 @@ export type RuleConditionEntity =
 export type RuleActionEntity =
   | SetRuleActionEntity
   | SetSplitAmountRuleActionEntity
-  | LinkScheduleRuleActionEntity;
+  | LinkScheduleRuleActionEntity
+  | PrependNoteRuleActionEntity
+  | AppendNoteRuleActionEntity;
 
 export interface SetRuleActionEntity {
   field: string;
   op: 'set';
   value: unknown;
   options?: {
+    template?: string;
     splitIndex?: number;
   };
   type?: string;
@@ -148,4 +157,14 @@ export interface SetSplitAmountRuleActionEntity {
 export interface LinkScheduleRuleActionEntity {
   op: 'link-schedule';
   value: ScheduleEntity;
+}
+
+export interface PrependNoteRuleActionEntity {
+  op: 'prepend-notes';
+  value: string;
+}
+
+export interface AppendNoteRuleActionEntity {
+  op: 'append-notes';
+  value: string;
 }

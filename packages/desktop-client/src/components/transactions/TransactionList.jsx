@@ -1,8 +1,6 @@
 import React, { useRef, useCallback, useLayoutEffect } from 'react';
 import { useDispatch } from 'react-redux';
 
-import escapeRegExp from 'lodash/escapeRegExp';
-
 import { pushModal } from 'loot-core/client/actions';
 import { send } from 'loot-core/src/platform/client/fetch';
 import {
@@ -70,6 +68,7 @@ export function TransactionList({
   payees,
   balances,
   showBalances,
+  showReconciled,
   showCleared,
   showAccount,
   headerContent,
@@ -191,8 +190,8 @@ export function TransactionList({
   const onNotesTagClick = useCallback(tag => {
     onApplyFilter({
       field: 'notes',
-      op: 'matches',
-      value: `(^|\\s|\\w|#)${escapeRegExp(tag)}($|\\s|#)`,
+      op: 'hasTags',
+      value: tag,
       type: 'string',
     });
   });
@@ -205,8 +204,9 @@ export function TransactionList({
       accounts={accounts}
       categoryGroups={categoryGroups}
       payees={payees}
-      showBalances={showBalances}
       balances={balances}
+      showBalances={showBalances}
+      showReconciled={showReconciled}
       showCleared={showCleared}
       showAccount={showAccount}
       showCategory={true}
