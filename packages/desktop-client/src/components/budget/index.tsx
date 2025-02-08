@@ -1,9 +1,8 @@
 // @ts-strict-ignore
 import React, { memo, useMemo, useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 
 import {
-  addNotification,
   applyBudgetAction,
   createCategory,
   createGroup,
@@ -12,56 +11,59 @@ import {
   getCategories,
   moveCategory,
   moveCategoryGroup,
-  pushModal,
   updateCategory,
   updateGroup,
-} from 'loot-core/src/client/actions';
+} from 'loot-core/client/queries/queriesSlice';
+import { addNotification, pushModal } from 'loot-core/src/client/actions';
 import { useSpreadsheet } from 'loot-core/src/client/SpreadsheetProvider';
-import { send, listen } from 'loot-core/src/platform/client/fetch';
+import { send } from 'loot-core/src/platform/client/fetch';
 import * as monthUtils from 'loot-core/src/shared/months';
 
 import { useCategories } from '../../hooks/useCategories';
 import { useGlobalPref } from '../../hooks/useGlobalPref';
 import { useLocalPref } from '../../hooks/useLocalPref';
 import { useNavigate } from '../../hooks/useNavigate';
+import { useSyncedPref } from '../../hooks/useSyncedPref';
+import { useDispatch } from '../../redux';
 import { styles } from '../../style';
 import { View } from '../common/View';
 import { NamespaceContext } from '../spreadsheet/NamespaceContext';
 
 import { DynamicBudgetTable } from './DynamicBudgetTable';
-import * as report from './report/ReportComponents';
-import { ReportProvider } from './report/ReportContext';
-import * as rollover from './rollover/RolloverComponents';
-import { RolloverProvider } from './rollover/RolloverContext';
+import * as envelopeBudget from './envelope/EnvelopeBudgetComponents';
+import { EnvelopeBudgetProvider } from './envelope/EnvelopeBudgetContext';
+import * as trackingBudget from './tracking/TrackingBudgetComponents';
+import { TrackingBudgetProvider } from './tracking/TrackingBudgetContext';
 import { prewarmAllMonths, prewarmMonth } from './util';
 
-type ReportComponents = {
-  SummaryComponent: typeof report.BudgetSummary;
-  ExpenseCategoryComponent: typeof report.ExpenseCategoryMonth;
-  ExpenseGroupComponent: typeof report.ExpenseGroupMonth;
-  IncomeCategoryComponent: typeof report.IncomeCategoryMonth;
-  IncomeGroupComponent: typeof report.IncomeGroupMonth;
-  BudgetTotalsComponent: typeof report.BudgetTotalsMonth;
-  IncomeHeaderComponent: typeof report.IncomeHeaderMonth;
+type TrackingReportComponents = {
+  SummaryComponent: typeof trackingBudget.BudgetSummary;
+  ExpenseCategoryComponent: typeof trackingBudget.ExpenseCategoryMonth;
+  ExpenseGroupComponent: typeof trackingBudget.ExpenseGroupMonth;
+  IncomeCategoryComponent: typeof trackingBudget.IncomeCategoryMonth;
+  IncomeGroupComponent: typeof trackingBudget.IncomeGroupMonth;
+  BudgetTotalsComponent: typeof trackingBudget.BudgetTotalsMonth;
+  IncomeHeaderComponent: typeof trackingBudget.IncomeHeaderMonth;
 };
 
-type RolloverComponents = {
-  SummaryComponent: typeof RolloverBudgetSummary;
-  ExpenseCategoryComponent: typeof rollover.ExpenseCategoryMonth;
-  ExpenseGroupComponent: typeof rollover.ExpenseGroupMonth;
-  IncomeCategoryComponent: typeof rollover.IncomeCategoryMonth;
-  IncomeGroupComponent: typeof rollover.IncomeGroupMonth;
-  BudgetTotalsComponent: typeof rollover.BudgetTotalsMonth;
-  IncomeHeaderComponent: typeof rollover.IncomeHeaderMonth;
+type EnvelopeBudgetComponents = {
+  SummaryComponent: typeof EnvelopeBudgetSummary;
+  ExpenseCategoryComponent: typeof envelopeBudget.ExpenseCategoryMonth;
+  ExpenseGroupComponent: typeof envelopeBudget.ExpenseGroupMonth;
+  IncomeCategoryComponent: typeof envelopeBudget.IncomeCategoryMonth;
+  IncomeGroupComponent: typeof envelopeBudget.IncomeGroupMonth;
+  BudgetTotalsComponent: typeof envelopeBudget.BudgetTotalsMonth;
+  IncomeHeaderComponent: typeof envelopeBudget.IncomeHeaderMonth;
 };
 
 type BudgetInnerProps = {
   accountId?: string;
-  reportComponents: ReportComponents;
-  rolloverComponents: RolloverComponents;
+  trackingComponents: TrackingReportComponents;
+  envelopeComponents: EnvelopeBudgetComponents;
 };
 
 function BudgetInner(props: BudgetInnerProps) {
+  const { t } = useTranslation();
   const currentMonth = monthUtils.currentMonth();
   const spreadsheet = useSpreadsheet();
   const dispatch = useDispatch();
@@ -75,19 +77,15 @@ function BudgetInner(props: BudgetInnerProps) {
     start: startMonth,
     end: startMonth,
   });
-  const [budgetType = 'rollover'] = useLocalPref('budgetType');
+  const [budgetType = 'rollover'] = useSyncedPref('budgetType');
   const [maxMonthsPref] = useGlobalPref('maxMonths');
   const maxMonths = maxMonthsPref || 1;
   const [initialized, setInitialized] = useState(false);
   const { grouped: categoryGroups } = useCategories();
 
-  function loadCategories() {
-    dispatch(getCategories());
-  }
-
   useEffect(() => {
     async function run() {
-      loadCategories();
+      await dispatch(getCategories());
 
       const { start, end } = await send('get-budget-bounds');
       setBounds({ start, end });
@@ -103,29 +101,6 @@ function BudgetInner(props: BudgetInnerProps) {
     }
 
     run();
-
-    const unlistens = [
-      listen('sync-event', ({ type, tables }) => {
-        if (
-          type === 'success' &&
-          (tables.includes('categories') ||
-            tables.includes('category_mapping') ||
-            tables.includes('category_groups'))
-        ) {
-          loadCategories();
-        }
-      }),
-
-      listen('undo-event', ({ tables }) => {
-        if (tables.includes('categories')) {
-          loadCategories();
-        }
-      }),
-    ];
-
-    return () => {
-      unlistens.forEach(unlisten => unlisten());
-    };
   }, []);
 
   useEffect(() => {
@@ -172,7 +147,10 @@ function BudgetInner(props: BudgetInnerProps) {
     dispatch(
       addNotification({
         type: 'error',
-        message: `Category ‘${name}’ already exists in group (May be Hidden)`,
+        message: t(
+          'Category “{{name}}” already exists in group (it may be hidden)',
+          { name },
+        ),
       }),
     );
   };
@@ -195,15 +173,15 @@ function BudgetInner(props: BudgetInnerProps) {
 
     if (category.id === 'new') {
       dispatch(
-        createCategory(
-          category.name,
-          category.cat_group,
-          category.is_income,
-          category.hidden,
-        ),
+        createCategory({
+          name: category.name,
+          groupId: category.cat_group,
+          isIncome: category.is_income,
+          isHidden: category.hidden,
+        }),
       );
     } else {
-      dispatch(updateCategory(category));
+      dispatch(updateCategory({ category }));
     }
   };
 
@@ -216,21 +194,21 @@ function BudgetInner(props: BudgetInnerProps) {
           category: id,
           onDelete: transferCategory => {
             if (id !== transferCategory) {
-              dispatch(deleteCategory(id, transferCategory));
+              dispatch(deleteCategory({ id, transferId: transferCategory }));
             }
           },
         }),
       );
     } else {
-      dispatch(deleteCategory(id));
+      dispatch(deleteCategory({ id }));
     }
   };
 
   const onSaveGroup = group => {
     if (group.id === 'new') {
-      dispatch(createGroup(group.name));
+      dispatch(createGroup({ name: group.name }));
     } else {
-      dispatch(updateGroup(group));
+      dispatch(updateGroup({ group }));
     }
   };
 
@@ -250,17 +228,29 @@ function BudgetInner(props: BudgetInnerProps) {
         pushModal('confirm-category-delete', {
           group: id,
           onDelete: transferCategory => {
-            dispatch(deleteGroup(id, transferCategory));
+            dispatch(deleteGroup({ id, transferId: transferCategory }));
           },
         }),
       );
     } else {
-      dispatch(deleteGroup(id));
+      dispatch(deleteGroup({ id }));
     }
   };
 
+  const onApplyBudgetTemplatesInGroup = async categories => {
+    dispatch(
+      applyBudgetAction({
+        month: startMonth,
+        type: 'apply-multiple-templates',
+        args: {
+          categories,
+        },
+      }),
+    );
+  };
+
   const onBudgetAction = (month, type, args) => {
-    dispatch(applyBudgetAction(month, type, args));
+    dispatch(applyBudgetAction({ month, type, args }));
   };
 
   const onShowActivity = (categoryId, month) => {
@@ -299,18 +289,26 @@ function BudgetInner(props: BudgetInnerProps) {
       return;
     }
 
-    dispatch(moveCategory(sortInfo.id, sortInfo.groupId, sortInfo.targetId));
+    dispatch(
+      moveCategory({
+        id: sortInfo.id,
+        groupId: sortInfo.groupId,
+        targetId: sortInfo.targetId,
+      }),
+    );
   };
 
   const onReorderGroup = async sortInfo => {
-    dispatch(moveCategoryGroup(sortInfo.id, sortInfo.targetId));
+    dispatch(
+      moveCategoryGroup({ id: sortInfo.id, targetId: sortInfo.targetId }),
+    );
   };
 
   const onToggleCollapse = () => {
     setSummaryCollapsedPref(!summaryCollapsed);
   };
 
-  const { reportComponents, rolloverComponents } = props;
+  const { trackingComponents, envelopeComponents } = props;
 
   if (!initialized || !categoryGroups) {
     return null;
@@ -319,7 +317,7 @@ function BudgetInner(props: BudgetInnerProps) {
   let table;
   if (budgetType === 'report') {
     table = (
-      <ReportProvider
+      <TrackingBudgetProvider
         summaryCollapsed={summaryCollapsed}
         onBudgetAction={onBudgetAction}
         onToggleSummaryCollapse={onToggleCollapse}
@@ -330,7 +328,7 @@ function BudgetInner(props: BudgetInnerProps) {
           startMonth={startMonth}
           monthBounds={bounds}
           maxMonths={maxMonths}
-          dataComponents={reportComponents}
+          dataComponents={trackingComponents}
           onMonthSelect={onMonthSelect}
           onDeleteCategory={onDeleteCategory}
           onDeleteGroup={onDeleteGroup}
@@ -340,12 +338,13 @@ function BudgetInner(props: BudgetInnerProps) {
           onShowActivity={onShowActivity}
           onReorderCategory={onReorderCategory}
           onReorderGroup={onReorderGroup}
+          onApplyBudgetTemplatesInGroup={onApplyBudgetTemplatesInGroup}
         />
-      </ReportProvider>
+      </TrackingBudgetProvider>
     );
   } else {
     table = (
-      <RolloverProvider
+      <EnvelopeBudgetProvider
         summaryCollapsed={summaryCollapsed}
         onBudgetAction={onBudgetAction}
         onToggleSummaryCollapse={onToggleCollapse}
@@ -356,7 +355,7 @@ function BudgetInner(props: BudgetInnerProps) {
           startMonth={startMonth}
           monthBounds={bounds}
           maxMonths={maxMonths}
-          dataComponents={rolloverComponents}
+          dataComponents={envelopeComponents}
           onMonthSelect={onMonthSelect}
           onDeleteCategory={onDeleteCategory}
           onDeleteGroup={onDeleteGroup}
@@ -366,8 +365,9 @@ function BudgetInner(props: BudgetInnerProps) {
           onShowActivity={onShowActivity}
           onReorderCategory={onReorderCategory}
           onReorderGroup={onReorderGroup}
+          onApplyBudgetTemplatesInGroup={onApplyBudgetTemplatesInGroup}
         />
-      </RolloverProvider>
+      </EnvelopeBudgetProvider>
     );
   }
 
@@ -378,37 +378,37 @@ function BudgetInner(props: BudgetInnerProps) {
   );
 }
 
-const RolloverBudgetSummary = memo<{ month: string }>(props => {
-  return <rollover.BudgetSummary {...props} />;
+const EnvelopeBudgetSummary = memo<{ month: string }>(props => {
+  return <envelopeBudget.BudgetSummary {...props} />;
 });
 
-RolloverBudgetSummary.displayName = 'RolloverBudgetSummary';
+EnvelopeBudgetSummary.displayName = 'EnvelopeBudgetSummary';
 
 export function Budget() {
-  const reportComponents = useMemo<ReportComponents>(
+  const trackingComponents = useMemo<TrackingReportComponents>(
     () => ({
-      SummaryComponent: report.BudgetSummary,
-      ExpenseCategoryComponent: report.ExpenseCategoryMonth,
-      ExpenseGroupComponent: report.ExpenseGroupMonth,
-      IncomeCategoryComponent: report.IncomeCategoryMonth,
-      IncomeGroupComponent: report.IncomeGroupMonth,
-      BudgetTotalsComponent: report.BudgetTotalsMonth,
-      IncomeHeaderComponent: report.IncomeHeaderMonth,
+      SummaryComponent: trackingBudget.BudgetSummary,
+      ExpenseCategoryComponent: trackingBudget.ExpenseCategoryMonth,
+      ExpenseGroupComponent: trackingBudget.ExpenseGroupMonth,
+      IncomeCategoryComponent: trackingBudget.IncomeCategoryMonth,
+      IncomeGroupComponent: trackingBudget.IncomeGroupMonth,
+      BudgetTotalsComponent: trackingBudget.BudgetTotalsMonth,
+      IncomeHeaderComponent: trackingBudget.IncomeHeaderMonth,
     }),
-    [report],
+    [trackingBudget],
   );
 
-  const rolloverComponents = useMemo<RolloverComponents>(
+  const envelopeComponents = useMemo<EnvelopeBudgetComponents>(
     () => ({
-      SummaryComponent: RolloverBudgetSummary,
-      ExpenseCategoryComponent: rollover.ExpenseCategoryMonth,
-      ExpenseGroupComponent: rollover.ExpenseGroupMonth,
-      IncomeCategoryComponent: rollover.IncomeCategoryMonth,
-      IncomeGroupComponent: rollover.IncomeGroupMonth,
-      BudgetTotalsComponent: rollover.BudgetTotalsMonth,
-      IncomeHeaderComponent: rollover.IncomeHeaderMonth,
+      SummaryComponent: EnvelopeBudgetSummary,
+      ExpenseCategoryComponent: envelopeBudget.ExpenseCategoryMonth,
+      ExpenseGroupComponent: envelopeBudget.ExpenseGroupMonth,
+      IncomeCategoryComponent: envelopeBudget.IncomeCategoryMonth,
+      IncomeGroupComponent: envelopeBudget.IncomeGroupMonth,
+      BudgetTotalsComponent: envelopeBudget.BudgetTotalsMonth,
+      IncomeHeaderComponent: envelopeBudget.IncomeHeaderMonth,
     }),
-    [rollover],
+    [envelopeBudget],
   );
 
   // In a previous iteration, the wrapper needs `overflow: hidden` for
@@ -425,8 +425,8 @@ export function Budget() {
       }}
     >
       <BudgetInner
-        reportComponents={reportComponents}
-        rolloverComponents={rolloverComponents}
+        trackingComponents={trackingComponents}
+        envelopeComponents={envelopeComponents}
       />
     </View>
   );

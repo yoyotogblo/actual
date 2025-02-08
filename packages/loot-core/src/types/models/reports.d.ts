@@ -11,6 +11,7 @@ export interface CustomReportEntity {
   groupBy: string;
   interval: string;
   balanceType: string;
+  sortBy?: sortByOpType;
   showEmpty: boolean;
   showOffBudget: boolean;
   showHiddenCategories: boolean;
@@ -30,13 +31,7 @@ export type balanceTypeOpType =
   | 'netAssets'
   | 'netDebts';
 
-export type spendingReportTimeType =
-  | 'average'
-  | 'thisMonth'
-  | 'lastMonth'
-  | 'twoMonthsPrevious'
-  | 'lastYear'
-  | 'lastYearPrevious';
+export type sortByOpType = 'asc' | 'desc' | 'name' | 'budget';
 
 export type SpendingMonthEntity = Record<
   string | number,
@@ -61,11 +56,9 @@ export interface SpendingEntity {
     months: SpendingMonthEntity;
     day: string;
     average: number;
-    thisMonth: number;
-    lastMonth: number;
-    twoMonthsPrevious: number;
-    lastYear: number;
-    lastYearPrevious: number;
+    compare: number;
+    compareTo: number;
+    budget: number;
   }[];
   startDate?: string;
   endDate?: string;
@@ -132,6 +125,7 @@ export interface CustomReportData {
   date_range: string;
   mode: string;
   group_by: string;
+  sort_by: sortByOpType;
   balance_type: string;
   show_empty: number;
   show_offbudget: number;

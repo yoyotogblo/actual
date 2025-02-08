@@ -1,4 +1,6 @@
 import { initBackend as initSQLBackend } from 'absurd-sql/dist/indexeddb-main-thread';
+// eslint-disable-next-line import/no-unresolved
+import { registerSW } from 'virtual:pwa-register';
 
 import * as Platform from 'loot-core/src/client/platform';
 
@@ -12,7 +14,11 @@ const backendWorkerUrl = new URL('./browser-server.js', import.meta.url);
 // everything else.
 
 const IS_DEV = process.env.NODE_ENV === 'development';
-const ACTUAL_VERSION = Platform.isPlaywright ? '99.9.9' : packageJson.version;
+const ACTUAL_VERSION = Platform.isPlaywright
+  ? '99.9.9'
+  : process.env.REACT_APP_REVIEW_ID
+    ? '.preview'
+    : packageJson.version;
 
 // *** Start the backend ***
 let worker;
@@ -39,6 +45,19 @@ function createBackendWorker() {
 
 createBackendWorker();
 
+let isUpdateReadyForDownload = false;
+let markUpdateReadyForDownload;
+const isUpdateReadyForDownloadPromise = new Promise(resolve => {
+  markUpdateReadyForDownload = () => {
+    isUpdateReadyForDownload = true;
+    resolve(true);
+  };
+});
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh: markUpdateReadyForDownload,
+});
+
 global.Actual = {
   IS_DEV,
   ACTUAL_VERSION,
@@ -50,6 +69,26 @@ global.Actual = {
   relaunch: () => {
     window.location.reload();
   },
+
+  reload: () => {
+    if (window.navigator.serviceWorker == null) return;
+
+    // Unregister the service worker handling routing and then reload. This should force the reload
+    // to query the actual server rather than delegating to the worker
+    return window.navigator.serviceWorker
+      .getRegistration('/')
+      .then(registration => {
+        if (registration == null) return;
+        return registration.unregister();
+      })
+      .then(() => {
+        window.location.reload();
+      });
+  },
+
+  startOAuthServer: () => {},
+
+  restartElectronServer: () => {},
 
   openFileDialog: async ({ filters = [] }) => {
     return new Promise(resolve => {
@@ -122,7 +161,14 @@ global.Actual = {
     window.open(url, '_blank');
   },
   onEventFromMain: () => {},
-  applyAppUpdate: () => {},
+  isUpdateReadyForDownload: () => isUpdateReadyForDownload,
+  waitForUpdateReadyForDownload: () => isUpdateReadyForDownloadPromise,
+  applyAppUpdate: async () => {
+    updateSW();
+
+    // Wait for the app to reload
+    await new Promise(() => {});
+  },
   updateAppMenu: () => {},
 
   ipcConnect: () => {},
@@ -133,6 +179,8 @@ global.Actual = {
   setTheme: theme => {
     window.__actionsForMenu.saveGlobalPrefs({ theme });
   },
+
+  moveBudgetDirectory: () => {},
 };
 
 function inputFocused(e) {
@@ -164,10 +212,5 @@ document.addEventListener('keydown', e => {
         window.__actionsForMenu.undo();
       }
     }
-  } else if (e.key === '?') {
-    if (inputFocused(e)) {
-      return;
-    }
-    window.__actionsForMenu.pushModal('keyboard-shortcuts');
   }
 });

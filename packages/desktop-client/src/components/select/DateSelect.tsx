@@ -12,6 +12,7 @@ import React, {
   type MutableRefObject,
 } from 'react';
 
+import { css } from '@emotion/css';
 import { parse, parseISO, format, subDays, addDays, isValid } from 'date-fns';
 import Pikaday from 'pikaday';
 
@@ -24,10 +25,9 @@ import {
   getShortYearRegex,
   currentDate,
 } from 'loot-core/src/shared/months';
-import { stringToInteger } from 'loot-core/src/shared/util';
 
-import { useLocalPref } from '../../hooks/useLocalPref';
-import { theme } from '../../style';
+import { useSyncedPref } from '../../hooks/useSyncedPref';
+import { styles, theme, type CSSProperties } from '../../style';
 import { Input } from '../common/Input';
 import { Popover } from '../common/Popover';
 import { View } from '../common/View';
@@ -35,7 +35,7 @@ import { View } from '../common/View';
 import DateSelectLeft from './DateSelect.left.png';
 import DateSelectRight from './DateSelect.right.png';
 
-const pickerStyles = {
+const pickerStyles: CSSProperties = {
   '& .pika-single.actual-date-picker': {
     color: theme.calendarText,
     background: theme.calendarBackground,
@@ -134,7 +134,7 @@ const DatePicker = forwardRef<DatePickerForwardedRef, DatePickerProps>(
       picker.current = new Pikaday({
         theme: 'actual-date-picker',
         keyboardInput: false,
-        firstDay: stringToInteger(firstDayOfWeekIdx),
+        firstDay: parseInt(firstDayOfWeekIdx),
         defaultDate: value
           ? parse(value, dateFormat, currentDate())
           : currentDate(),
@@ -161,7 +161,12 @@ const DatePicker = forwardRef<DatePickerForwardedRef, DatePickerProps>(
       }
     }, [value, dateFormat]);
 
-    return <View style={{ ...pickerStyles, flex: 1 }} innerRef={mountPoint} />;
+    return (
+      <View
+        className={css([pickerStyles, { flex: 1 }])}
+        innerRef={mountPoint}
+      />
+    );
   },
 );
 
@@ -172,6 +177,7 @@ function defaultShouldSaveFromKey(e) {
 }
 
 type DateSelectProps = {
+  id?: string;
   containerProps?: ComponentProps<typeof View>;
   inputProps?: ComponentProps<typeof Input>;
   value: string;
@@ -188,6 +194,7 @@ type DateSelectProps = {
 };
 
 export function DateSelect({
+  id,
   containerProps,
   inputProps,
   value: defaultValue,
@@ -232,7 +239,7 @@ export function DateSelect({
   const [selectedValue, setSelectedValue] = useState(value);
   const userSelectedValue = useRef(selectedValue);
 
-  const [_firstDayOfWeekIdx] = useLocalPref('firstDayOfWeekIdx');
+  const [_firstDayOfWeekIdx] = useSyncedPref('firstDayOfWeekIdx');
   const firstDayOfWeekIdx = _firstDayOfWeekIdx || '0';
 
   useEffect(() => {
@@ -333,7 +340,7 @@ export function DateSelect({
         isOpen={open}
         isNonModal
         onOpenChange={() => setOpen(false)}
-        style={{ minWidth: 225 }}
+        style={{ ...styles.popover, minWidth: 225 }}
         data-testid="date-select-tooltip"
       >
         {content}
@@ -344,6 +351,7 @@ export function DateSelect({
   return (
     <View {...containerProps}>
       <Input
+        id={id}
         focused={focused}
         {...inputProps}
         inputRef={inputRef}

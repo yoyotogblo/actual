@@ -1,3 +1,5 @@
+import { ImportTransactionsOpts } from '@actual-app/api';
+
 import { type batchUpdateTransactions } from '../server/accounts/transactions';
 import type {
   APIAccountEntity,
@@ -66,7 +68,7 @@ export interface ApiHandlers {
   'api/budget-hold-for-next-month': (arg: {
     month: string;
     amount: number;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
 
   'api/budget-reset-hold': (arg: { month: string }) => Promise<void>;
 
@@ -76,7 +78,12 @@ export interface ApiHandlers {
     payees;
   }) => Promise<unknown>;
 
-  'api/transactions-import': (arg: { accountId; transactions }) => Promise<{
+  'api/transactions-import': (arg: {
+    accountId;
+    transactions;
+    isPreview?;
+    opts?: ImportTransactionsOpts;
+  }) => Promise<{
     errors?: { message: string }[];
     added;
     updated;
@@ -102,7 +109,7 @@ export interface ApiHandlers {
 
   'api/transaction-delete': (arg: {
     id;
-  }) => Promise<Awaited<ReturnType<typeof batchUpdateTransactions>>['updated']>;
+  }) => Promise<Awaited<ReturnType<typeof batchUpdateTransactions>>['deleted']>;
 
   'api/sync': () => Promise<void>;
 
@@ -176,5 +183,5 @@ export interface ApiHandlers {
 
   'api/rule-update': (arg: { rule: RuleEntity }) => Promise<RuleEntity>;
 
-  'api/rule-delete': (arg: { id: string }) => Promise<boolean>;
+  'api/rule-delete': (id: string) => Promise<boolean>;
 }

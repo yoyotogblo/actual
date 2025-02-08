@@ -18,13 +18,16 @@ export interface RulesHandlers {
 
   'rule-add': (
     rule: Omit<RuleEntity, 'id'>,
-  ) => Promise<{ error: ValidationError } | { id: string }>;
+  ) => Promise<{ error: ValidationError } | RuleEntity>;
 
-  'rule-update': (
-    rule: Partial<RuleEntity>,
-  ) => Promise<{ error: ValidationError } | object>;
+  'rule-update': <
+    PartialRule extends Partial<Omit<RuleEntity, 'id'>> &
+      Pick<RuleEntity, 'id'>,
+  >(
+    rule: PartialRule,
+  ) => Promise<{ error: ValidationError } | PartialRule>;
 
-  'rule-delete': (rule: Required<RuleEntity>) => Promise<false | void>;
+  'rule-delete': (id: string) => Promise<boolean>;
 
   'rule-delete-all': (
     ids: string[],
@@ -42,9 +45,9 @@ export interface RulesHandlers {
 
   'rules-get': () => Promise<RuleEntity[]>;
 
-  // TODO: change return value to `RuleEntity`
-  'rule-get': (arg: { id: string }) => Promise<unknown>;
+  'rule-get': (arg: { id: RuleEntity['id'] }) => Promise<RuleEntity>;
 
-  // TODO: change types to `TransactionEntity`
-  'rules-run': (arg: { transaction }) => Promise<unknown>;
+  'rules-run': (arg: {
+    transaction: TransactionEntity;
+  }) => Promise<TransactionEntity>;
 }

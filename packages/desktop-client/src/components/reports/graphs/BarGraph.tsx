@@ -1,7 +1,8 @@
 // @ts-strict-ignore
-import React, { useState } from 'react';
+import React, { useState, type CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { css } from 'glamor';
+import { css } from '@emotion/css';
 import {
   BarChart,
   Bar,
@@ -29,9 +30,7 @@ import { useAccounts } from '../../../hooks/useAccounts';
 import { useCategories } from '../../../hooks/useCategories';
 import { useNavigate } from '../../../hooks/useNavigate';
 import { usePrivacyMode } from '../../../hooks/usePrivacyMode';
-import { useResponsive } from '../../../ResponsiveProvider';
-import { type CSSProperties } from '../../../style';
-import { theme } from '../../../style/index';
+import { theme } from '../../../style';
 import { AlignedText } from '../../common/AlignedText';
 import { Container } from '../Container';
 import { getCustomTick } from '../getCustomTick';
@@ -51,13 +50,13 @@ type PayloadChild = {
 type PayloadItem = {
   payload: {
     name: string;
-    totalAssets: number | string;
-    totalDebts: number | string;
-    netAssets: number | string;
-    netDebts: number | string;
-    totalTotals: number | string;
-    networth: number | string;
-    totalChange: number | string;
+    totalAssets: number;
+    totalDebts: number;
+    netAssets: number;
+    netDebts: number;
+    totalTotals: number;
+    networth: number;
+    totalChange: number;
     children: [PayloadChild];
   };
 };
@@ -75,10 +74,12 @@ const CustomTooltip = ({
   balanceTypeOp,
   yAxis,
 }: CustomTooltipProps) => {
+  const { t } = useTranslation();
+
   if (active && payload && payload.length) {
     return (
       <div
-        className={`${css({
+        className={css({
           zIndex: 1000,
           pointerEvents: 'none',
           borderRadius: 2,
@@ -86,7 +87,7 @@ const CustomTooltip = ({
           backgroundColor: theme.menuBackground,
           color: theme.menuItemText,
           padding: 10,
-        })}`}
+        })}
       >
         <div>
           <div style={{ marginBottom: 10 }}>
@@ -95,31 +96,31 @@ const CustomTooltip = ({
           <div style={{ lineHeight: 1.5 }}>
             {['totalAssets', 'totalTotals'].includes(balanceTypeOp) && (
               <AlignedText
-                left="Assets:"
+                left={t('Assets:')}
                 right={amountToCurrency(payload[0].payload.totalAssets)}
               />
             )}
             {['totalDebts', 'totalTotals'].includes(balanceTypeOp) && (
               <AlignedText
-                left="Debts:"
+                left={t('Debts:')}
                 right={amountToCurrency(payload[0].payload.totalDebts)}
               />
             )}
             {['netAssets'].includes(balanceTypeOp) && (
               <AlignedText
-                left="Net Assets:"
+                left={t('Net Assets:')}
                 right={amountToCurrency(payload[0].payload.netAssets)}
               />
             )}
             {['netDebts'].includes(balanceTypeOp) && (
               <AlignedText
-                left="Net Debts:"
+                left={t('Net Debts:')}
                 right={amountToCurrency(payload[0].payload.netDebts)}
               />
             )}
             {['totalTotals'].includes(balanceTypeOp) && (
               <AlignedText
-                left="Net:"
+                left={t('Net:')}
                 right={
                   <strong>
                     {amountToCurrency(payload[0].payload.totalTotals)}
@@ -178,7 +179,6 @@ export function BarGraph({
   const categories = useCategories();
   const accounts = useAccounts();
   const privacyMode = usePrivacyMode();
-  const { isNarrowWidth } = useResponsive();
   const [pointer, setPointer] = useState('');
 
   const yAxis = groupBy === 'Interval' ? 'date' : 'name';
@@ -186,10 +186,6 @@ export function BarGraph({
   const labelsMargin = viewLabels ? 30 : 0;
 
   const getVal = obj => {
-    if (balanceTypeOp === 'totalTotals' && groupBy === 'Interval') {
-      return obj.totalAssets;
-    }
-
     if (['totalDebts', 'netDebts'].includes(balanceTypeOp)) {
       return -1 * obj[balanceTypeOp];
     }
@@ -279,7 +275,7 @@ export function BarGraph({
                     setPointer('pointer')
                   }
                   onClick={item =>
-                    !isNarrowWidth &&
+                    ((compact && showTooltip) || !compact) &&
                     !['Group', 'Interval'].includes(groupBy) &&
                     showActivity({
                       navigate,
@@ -311,23 +307,6 @@ export function BarGraph({
                     />
                   ))}
                 </Bar>
-                {yAxis === 'date' && balanceTypeOp === 'totalTotals' && (
-                  <Bar dataKey="totalDebts" stackId="a">
-                    {viewLabels && !compact && (
-                      <LabelList
-                        dataKey="totalDebts"
-                        content={e => customLabel(e, balanceTypeOp)}
-                      />
-                    )}
-                    {data[splitData].map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={theme.reportsRed}
-                        name={entry.name}
-                      />
-                    ))}
-                  </Bar>
-                )}
               </BarChart>
             </div>
           </ResponsiveContainer>

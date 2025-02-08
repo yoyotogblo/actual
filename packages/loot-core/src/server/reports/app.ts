@@ -6,19 +6,25 @@ import {
 } from '../../types/models';
 import { createApp } from '../app';
 import * as db from '../db';
+import { ValidationError } from '../errors';
 import { requiredFields } from '../models';
 import { mutator } from '../mutators';
 import { undoable } from '../undo';
 
 import { ReportsHandlers } from './types/handlers';
 
-const reportModel = {
-  validate(report: CustomReportEntity, { update }: { update?: boolean } = {}) {
+export const reportModel = {
+  validate(
+    report: Omit<CustomReportEntity, 'tombstone'>,
+    { update }: { update?: boolean } = {},
+  ) {
     requiredFields('Report', report, ['conditionsOp'], update);
 
     if (!update || 'conditionsOp' in report) {
       if (!['and', 'or'].includes(report.conditionsOp)) {
-        throw new Error('Invalid filter conditionsOp: ' + report.conditionsOp);
+        throw new ValidationError(
+          'Invalid filter conditionsOp: ' + report.conditionsOp,
+        );
       }
     }
 
@@ -35,6 +41,7 @@ const reportModel = {
       dateRange: row.date_range,
       mode: row.mode,
       groupBy: row.group_by,
+      sortBy: row.sort_by,
       interval: row.interval,
       balanceType: row.balance_type,
       showEmpty: row.show_empty === 1,
@@ -58,6 +65,7 @@ const reportModel = {
       date_range: report.dateRange,
       mode: report.mode,
       group_by: report.groupBy,
+      sort_by: report.sortBy,
       interval: report.interval,
       balance_type: report.balanceType,
       show_empty: report.showEmpty ? 1 : 0,
@@ -90,7 +98,7 @@ async function reportNameExists(
   //for update/rename
   if (!newItem) {
     /*
-    -if the found item is the same as the existing item 
+    -if the found item is the same as the existing item
     then no name change was made.
     -if they are not the same then there is another
     item with that name already.
@@ -114,7 +122,7 @@ async function createReport(report: CustomReportEntity) {
 
   const nameExists = await reportNameExists(item.name, item.id ?? '', true);
   if (nameExists) {
-    throw new Error('There is already a filter named ' + item.name);
+    throw new Error('There is already a report named ' + item.name);
   }
 
   // Create the report here based on the info
@@ -134,7 +142,7 @@ async function updateReport(item: CustomReportEntity) {
 
   const nameExists = await reportNameExists(item.name, item.id, false);
   if (nameExists) {
-    throw new Error('There is already a filter named ' + item.name);
+    throw new Error('There is already a report named ' + item.name);
   }
 
   await db.updateWithSchema('custom_reports', reportModel.fromJS(item));

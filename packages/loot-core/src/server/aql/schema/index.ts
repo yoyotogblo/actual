@@ -122,6 +122,10 @@ export const schema = {
     id: f('id'),
     note: f('string'),
   },
+  preferences: {
+    id: f('id'),
+    value: f('string'),
+  },
   transaction_filters: {
     id: f('id'),
     name: f('string'),
@@ -138,6 +142,7 @@ export const schema = {
     date_range: f('string'),
     mode: f('string', { default: 'total' }),
     group_by: f('string', { default: 'Category' }),
+    sort_by: f('string', { default: 'desc' }),
     balance_type: f('string', { default: 'Expense' }),
     show_empty: f('integer', { default: 0 }),
     show_offbudget: f('integer', { default: 0 }),
@@ -164,11 +169,21 @@ export const schema = {
   zero_budgets: {
     id: f('id'),
     month: f('integer'),
-    category: f('string'),
+    category: f('string', { ref: 'categories' }),
     amount: f('integer'),
     carryover: f('integer'),
     goal: f('integer'),
     long_goal: f('integer'),
+  },
+  dashboard: {
+    id: f('id'),
+    type: f('string', { required: true }),
+    width: f('integer', { required: true }),
+    height: f('integer', { required: true }),
+    x: f('integer', { required: true }),
+    y: f('integer', { required: true }),
+    meta: f('json'),
+    tombstone: f('boolean'),
   },
 };
 

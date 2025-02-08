@@ -1,130 +1,156 @@
 // @ts-strict-ignore
 import React, { useEffect, useState } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
   ErrorBoundary,
   useErrorBoundary,
   type FallbackProps,
 } from 'react-error-boundary';
 import { HotkeysProvider } from 'react-hotkeys-hook';
-import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
+import { BrowserRouter } from 'react-router-dom';
 
 import {
+  addNotification,
   closeBudget,
   loadBudget,
   loadGlobalPrefs,
-  setAppState,
-  sync,
+  signOut,
 } from 'loot-core/client/actions';
+import { setAppState, sync } from 'loot-core/client/app/appSlice';
+import { SpreadsheetProvider } from 'loot-core/client/SpreadsheetProvider';
 import * as Platform from 'loot-core/src/client/platform';
-import { type State } from 'loot-core/src/client/state-types';
 import {
   init as initConnection,
   send,
 } from 'loot-core/src/platform/client/fetch';
 
-import { useLocalPref } from '../hooks/useLocalPref';
+import { handleGlobalEvents } from '../global-events';
+import { useMetadataPref } from '../hooks/useMetadataPref';
 import { installPolyfills } from '../polyfills';
-import { ResponsiveProvider } from '../ResponsiveProvider';
-import { styles, hasHiddenScrollbars, ThemeStyle } from '../style';
+import { useDispatch, useSelector, useStore } from '../redux';
+import { styles, hasHiddenScrollbars, ThemeStyle, useTheme } from '../style';
+import { ExposeNavigate } from '../util/router-tools';
 
 import { AppBackground } from './AppBackground';
+import { BudgetMonthCountProvider } from './budget/BudgetMonthCountContext';
 import { View } from './common/View';
 import { DevelopmentTopBar } from './DevelopmentTopBar';
 import { FatalError } from './FatalError';
 import { FinancesApp } from './FinancesApp';
 import { ManagementApp } from './manager/ManagementApp';
+import { Modals } from './Modals';
+import { ResponsiveProvider } from './responsive/ResponsiveProvider';
+import { SidebarProvider } from './sidebar/SidebarProvider';
 import { UpdateNotification } from './UpdateNotification';
 
-type AppInnerProps = {
-  budgetId: string;
-  cloudFileId: string;
-};
-
-function AppInner({ budgetId, cloudFileId }: AppInnerProps) {
-  const [initializing, setInitializing] = useState(true);
+function AppInner() {
+  const [budgetId] = useMetadataPref('id');
+  const [cloudFileId] = useMetadataPref('cloudFileId');
+  const { t } = useTranslation();
   const { showBoundary: showErrorBoundary } = useErrorBoundary();
-  const loadingText = useSelector((state: State) => state.app.loadingText);
   const dispatch = useDispatch();
+  const userData = useSelector(state => state.user.data);
 
-  async function init() {
-    const socketName = await global.Actual.getServerSocket();
+  useEffect(() => {
+    const maybeUpdate = async <T,>(cb?: () => T): Promise<T> => {
+      if (global.Actual.isUpdateReadyForDownload()) {
+        dispatch(
+          setAppState({
+            loadingText: t('Downloading and applying update...'),
+          }),
+        );
+        await global.Actual.applyAppUpdate();
+      }
+      return cb?.();
+    };
 
-    dispatch(
-      setAppState({
-        loadingText: 'Initializing the connection to the local database...',
-      }),
-    );
-    await initConnection(socketName);
+    async function init() {
+      const socketName = await maybeUpdate(() =>
+        global.Actual.getServerSocket(),
+      );
 
-    // Load any global prefs
-    dispatch(
-      setAppState({
-        loadingText: 'Loading global preferences...',
-      }),
-    );
-    await dispatch(loadGlobalPrefs());
-
-    // Open the last opened budget, if any
-    dispatch(
-      setAppState({
-        loadingText: 'Opening last budget...',
-      }),
-    );
-    const budgetId = await send('get-last-opened-backup');
-    if (budgetId) {
-      await dispatch(loadBudget(budgetId, 'Loading the last budget file...'));
-
-      // Check to see if this file has been remotely deleted (but
-      // don't block on this in case they are offline or something)
       dispatch(
         setAppState({
-          loadingText: 'Retrieving remote files...',
+          loadingText: t(
+            'Initializing the connection to the local database...',
+          ),
         }),
       );
-      send('get-remote-files').then(files => {
+      await initConnection(socketName);
+
+      // Load any global prefs
+      dispatch(
+        setAppState({
+          loadingText: t('Loading global preferences...'),
+        }),
+      );
+      await dispatch(loadGlobalPrefs());
+
+      // Open the last opened budget, if any
+      dispatch(
+        setAppState({
+          loadingText: t('Opening last budget...'),
+        }),
+      );
+      const budgetId = await send('get-last-opened-backup');
+      if (budgetId) {
+        await dispatch(loadBudget(budgetId));
+
+        // Check to see if this file has been remotely deleted (but
+        // don't block on this in case they are offline or something)
+        dispatch(
+          setAppState({
+            loadingText: t('Retrieving remote files...'),
+          }),
+        );
+
+        const files = await send('get-remote-files');
         if (files) {
           const remoteFile = files.find(f => f.fileId === cloudFileId);
           if (remoteFile && remoteFile.deleted) {
             dispatch(closeBudget());
           }
         }
-      });
-    }
-  }
 
-  useEffect(() => {
+        await maybeUpdate();
+      }
+    }
+
     async function initAll() {
       await Promise.all([installPolyfills(), init()]);
-      setInitializing(false);
-      dispatch(
-        setAppState({
-          loadingText: null,
-        }),
-      );
+      dispatch(setAppState({ loadingText: null }));
     }
 
     initAll().catch(showErrorBoundary);
-  }, []);
+    // Removed cloudFileId from dependencies to prevent hard crash when closing budget in Electron
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, showErrorBoundary, t]);
 
   useEffect(() => {
     global.Actual.updateAppMenu(budgetId);
   }, [budgetId]);
 
-  return (
-    <>
-      {(initializing || !budgetId) && (
-        <AppBackground initializing={initializing} loadingText={loadingText} />
-      )}
-      {!initializing &&
-        (budgetId ? (
-          <FinancesApp />
-        ) : (
-          <ManagementApp isLoading={loadingText != null} />
-        ))}
+  useEffect(() => {
+    if (userData?.tokenExpired) {
+      dispatch(
+        addNotification({
+          type: 'error',
+          id: 'login-expired',
+          title: t('Login expired'),
+          sticky: true,
+          message: t('Login expired, please log in again.'),
+          button: {
+            title: t('Go to log in'),
+            action: () => dispatch(signOut()),
+          },
+        }),
+      );
+    }
+  }, [dispatch, t, userData?.tokenExpired]);
 
-      <UpdateNotification />
-    </>
-  );
+  return budgetId ? <FinancesApp /> : <ManagementApp />;
 }
 
 function ErrorFallback({ error }: FallbackProps) {
@@ -137,8 +163,10 @@ function ErrorFallback({ error }: FallbackProps) {
 }
 
 export function App() {
-  const [budgetId] = useLocalPref('id');
-  const [cloudFileId] = useLocalPref('cloudFileId');
+  const store = useStore();
+
+  useEffect(() => handleGlobalEvents(store), [store]);
+
   const [hiddenScrollbars, setHiddenScrollbars] = useState(
     hasHiddenScrollbars(),
   );
@@ -169,32 +197,53 @@ export function App() {
       window.removeEventListener('focus', checkScrollbars);
       window.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [dispatch]);
+  }, [dispatch, hiddenScrollbars]);
+
+  const [theme] = useTheme();
 
   return (
-    <HotkeysProvider initiallyActiveScopes={['*']}>
-      <ResponsiveProvider>
-        <View
-          style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-        >
-          <View
-            key={hiddenScrollbars ? 'hidden-scrollbars' : 'scrollbars'}
-            style={{
-              flexGrow: 1,
-              overflow: 'hidden',
-              ...styles.lightScrollbar,
-            }}
-          >
-            <ErrorBoundary FallbackComponent={ErrorFallback}>
-              {process.env.REACT_APP_REVIEW_ID && !Platform.isPlaywright && (
-                <DevelopmentTopBar />
-              )}
-              <AppInner budgetId={budgetId} cloudFileId={cloudFileId} />
-            </ErrorBoundary>
-            <ThemeStyle />
-          </View>
-        </View>
-      </ResponsiveProvider>
-    </HotkeysProvider>
+    <BrowserRouter>
+      <ExposeNavigate />
+      <HotkeysProvider initiallyActiveScopes={['*']}>
+        <ResponsiveProvider>
+          <SpreadsheetProvider>
+            <SidebarProvider>
+              <BudgetMonthCountProvider>
+                <DndProvider backend={HTML5Backend}>
+                  <View
+                    data-theme={theme}
+                    style={{
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <View
+                      key={
+                        hiddenScrollbars ? 'hidden-scrollbars' : 'scrollbars'
+                      }
+                      style={{
+                        flexGrow: 1,
+                        overflow: 'hidden',
+                        ...styles.lightScrollbar,
+                      }}
+                    >
+                      <ErrorBoundary FallbackComponent={ErrorFallback}>
+                        {process.env.REACT_APP_REVIEW_ID &&
+                          !Platform.isPlaywright && <DevelopmentTopBar />}
+                        <AppInner />
+                      </ErrorBoundary>
+                      <ThemeStyle />
+                      <Modals />
+                      <UpdateNotification />
+                    </View>
+                  </View>
+                </DndProvider>
+              </BudgetMonthCountProvider>
+            </SidebarProvider>
+          </SpreadsheetProvider>
+        </ResponsiveProvider>
+      </HotkeysProvider>
+    </BrowserRouter>
   );
 }
