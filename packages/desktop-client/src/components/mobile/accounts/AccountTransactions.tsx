@@ -8,14 +8,10 @@ import React, {
 
 import {
   collapseModals,
-  getPayees,
-  markAccountRead,
   openAccountCloseModal,
   pushModal,
-  reopenAccount,
-  syncAndDownload,
-  updateAccount,
 } from 'loot-core/client/actions';
+import { syncAndDownload } from 'loot-core/client/app/appSlice';
 import {
   accountSchedulesQuery,
   SchedulesProvider,
@@ -25,6 +21,11 @@ import {
   useTransactionsSearch,
 } from 'loot-core/client/data-hooks/transactions';
 import * as queries from 'loot-core/client/queries';
+import {
+  markAccountRead,
+  reopenAccount,
+  updateAccount,
+} from 'loot-core/client/queries/queriesSlice';
 import { listen, send } from 'loot-core/platform/client/fetch';
 import { type Query } from 'loot-core/shared/query';
 import { isPreviewId } from 'loot-core/shared/transactions';
@@ -111,7 +112,7 @@ function AccountHeader({ account }: { readonly account: AccountEntity }) {
 
   const onSave = useCallback(
     (account: AccountEntity) => {
-      dispatch(updateAccount(account));
+      dispatch(updateAccount({ account }));
     },
     [dispatch],
   );
@@ -138,7 +139,7 @@ function AccountHeader({ account }: { readonly account: AccountEntity }) {
   }, [account.id, dispatch]);
 
   const onReopenAccount = useCallback(() => {
-    dispatch(reopenAccount(account.id));
+    dispatch(reopenAccount({ id: account.id }));
   }, [account.id, dispatch]);
 
   const onClick = useCallback(() => {
@@ -256,29 +257,26 @@ function TransactionListWithPreviews({
 
   const onRefresh = useCallback(() => {
     if (accountId) {
-      dispatch(syncAndDownload(accountId));
+      dispatch(syncAndDownload({ accountId }));
     }
   }, [accountId, dispatch]);
 
   useEffect(() => {
     if (accountId) {
-      dispatch(markAccountRead(accountId));
+      dispatch(markAccountRead({ id: accountId }));
     }
   }, [accountId, dispatch]);
 
   useEffect(() => {
-    return listen('sync-event', ({ type, tables }) => {
-      if (type === 'applied') {
+    return listen('sync-event', event => {
+      if (event.type === 'applied') {
+        const tables = event.tables;
         if (
           tables.includes('transactions') ||
           tables.includes('category_mapping') ||
           tables.includes('payee_mapping')
         ) {
           reloadTransactions();
-        }
-
-        if (tables.includes('payees') || tables.includes('payee_mapping')) {
-          dispatch(getPayees());
         }
       }
     });
@@ -306,6 +304,13 @@ function TransactionListWithPreviews({
             onSkip: async transactionId => {
               const parts = transactionId.split('/');
               await send('schedule/skip-next-date', { id: parts[1] });
+              dispatch(collapseModals('scheduled-transaction-menu'));
+            },
+            onComplete: async transactionId => {
+              const parts = transactionId.split('/');
+              await send('schedule/update', {
+                schedule: { id: parts[1], completed: true },
+              });
               dispatch(collapseModals('scheduled-transaction-menu'));
             },
           }),

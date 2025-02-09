@@ -371,11 +371,13 @@ handlers['get-category-groups'] = async function () {
 handlers['category-group-create'] = mutator(async function ({
   name,
   isIncome,
+  hidden,
 }) {
   return withUndo(async () => {
     return db.insertCategoryGroup({
       name,
       is_income: isIncome ? 1 : 0,
+      hidden,
     });
   });
 });
@@ -1242,6 +1244,7 @@ handlers['transactions-import'] = mutator(function ({
   accountId,
   transactions,
   isPreview,
+  opts,
 }) {
   return withUndo(async () => {
     if (typeof accountId !== 'string') {
@@ -1255,6 +1258,7 @@ handlers['transactions-import'] = mutator(function ({
         false,
         true,
         isPreview,
+        opts?.defaultCleared,
       );
     } catch (err) {
       if (err instanceof TransactionError) {
@@ -1346,6 +1350,9 @@ handlers['save-global-prefs'] = async function (prefs) {
   if ('floatingSidebar' in prefs) {
     await asyncStorage.setItem('floating-sidebar', '' + prefs.floatingSidebar);
   }
+  if ('language' in prefs) {
+    await asyncStorage.setItem('language', prefs.language);
+  }
   if ('theme' in prefs) {
     await asyncStorage.setItem('theme', prefs.theme);
   }
@@ -1370,6 +1377,7 @@ handlers['load-global-prefs'] = async function () {
     [, maxMonths],
     [, documentDir],
     [, encryptKey],
+    [, language],
     [, theme],
     [, preferredDarkTheme],
     [, serverSelfSignedCert],
@@ -1378,6 +1386,7 @@ handlers['load-global-prefs'] = async function () {
     'max-months',
     'document-dir',
     'encrypt-key',
+    'language',
     'theme',
     'preferred-dark-theme',
     'server-self-signed-cert',
@@ -1387,6 +1396,7 @@ handlers['load-global-prefs'] = async function () {
     maxMonths: stringToInteger(maxMonths || ''),
     documentDir: documentDir || getDefaultDocumentDir(),
     keyId: encryptKey && JSON.parse(encryptKey).id,
+    language,
     theme:
       theme === 'light' ||
       theme === 'dark' ||
@@ -2024,7 +2034,7 @@ handlers['duplicate-budget'] = async function ({
         await fs.removeDirRecursively(newBudgetDir);
       }
     } catch {} // Ignore cleanup errors
-    throw new Error(`Failed to duplicate budget: ${error.message}`);
+    throw new Error(`Failed to duplicate budget file: ${error.message}`);
   }
 
   // load in and validate

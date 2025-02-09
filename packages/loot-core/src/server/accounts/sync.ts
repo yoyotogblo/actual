@@ -366,6 +366,12 @@ async function normalizeBankSyncTransactions(transactions, acctId) {
 
     trans.cleared = Boolean(trans.booked);
 
+    let imported_id = trans.transactionId;
+
+    if (trans.cleared && !trans.transactionId && trans.internalTransactionId) {
+      imported_id = `${trans.account}-${trans.internalTransactionId}`;
+    }
+
     const notes =
       trans.remittanceInformationUnstructured ||
       (trans.remittanceInformationUnstructuredArray || []).join(', ');
@@ -379,7 +385,7 @@ async function normalizeBankSyncTransactions(transactions, acctId) {
         date: trans.date,
         notes: notes.trim().replace('#', '##'),
         category: trans.category ?? null,
-        imported_id: trans.transactionId,
+        imported_id,
         imported_payee: trans.imported_payee,
         cleared: trans.cleared,
       },
@@ -408,6 +414,7 @@ export async function reconcileTransactions(
   isBankSyncAccount = false,
   strictIdChecking = true,
   isPreview = false,
+  defaultCleared = true,
 ) {
   console.log('Performing transaction reconciliation');
 
@@ -451,7 +458,7 @@ export async function reconcileTransactions(
         category: existing.category || trans.category || null,
         imported_payee: trans.imported_payee || null,
         notes: existing.notes || trans.notes || null,
-        cleared: trans.cleared != null ? trans.cleared : true,
+        cleared: trans.cleared ?? existing.cleared,
       };
 
       if (hasFieldsChanged(existing, updates, Object.keys(updates))) {
@@ -483,7 +490,7 @@ export async function reconcileTransactions(
         ...newTrans,
         id: uuidv4(),
         category: trans.category || null,
-        cleared: trans.cleared != null ? trans.cleared : true,
+        cleared: trans.cleared ?? defaultCleared,
       };
 
       if (subtransactions && subtransactions.length > 0) {

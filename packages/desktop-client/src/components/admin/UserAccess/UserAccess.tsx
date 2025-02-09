@@ -9,7 +9,6 @@ import React, {
   type CSSProperties,
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { useDispatch } from 'react-redux';
 
 import { addNotification, pushModal } from 'loot-core/client/actions';
 import { send } from 'loot-core/src/platform/client/fetch';
@@ -21,6 +20,7 @@ import { type UserAccessEntity } from 'loot-core/types/models/userAccess';
 import { useMetadataPref } from '../../../hooks/useMetadataPref';
 import { SvgLockOpen } from '../../../icons/v1';
 import { SvgLockClosed } from '../../../icons/v2';
+import { useDispatch } from '../../../redux';
 import { theme } from '../../../style';
 import { Button } from '../../common/Button2';
 import { Link } from '../../common/Link';
@@ -106,8 +106,9 @@ function UserAccessContent({
   }, [cloudFileId, setLoading, t]);
 
   const loadOwner = useCallback(async () => {
-    const file: Awaited<ReturnType<Handlers['get-user-file-info']>> =
-      (await send('get-user-file-info', cloudFileId as string)) ?? {};
+    const file = (await send('get-user-file-info', cloudFileId as string)) ?? {
+      usersWithAccess: [],
+    };
     const owner = file?.usersWithAccess.filter(user => user.owner);
 
     if (owner.length > 0) {

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { getPayees } from 'loot-core/client/actions';
 import {
   useTransactions,
   useTransactionsSearch,
@@ -62,18 +61,15 @@ export function CategoryTransactions({
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
 
   useEffect(() => {
-    return listen('sync-event', ({ type, tables }) => {
-      if (type === 'applied') {
+    return listen('sync-event', event => {
+      if (event.type === 'applied') {
+        const tables = event.tables;
         if (
           tables.includes('transactions') ||
           tables.includes('category_mapping') ||
           tables.includes('payee_mapping')
         ) {
           reloadTransactions();
-        }
-
-        if (tables.includes('payees') || tables.includes('payee_mapping')) {
-          dispatch(getPayees());
         }
       }
     });
