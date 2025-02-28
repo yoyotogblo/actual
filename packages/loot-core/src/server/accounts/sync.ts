@@ -100,9 +100,9 @@ async function getAccountOldestTransaction(id): Promise<TransactionEntity> {
 }
 
 async function getAccountSyncStartDate(id) {
-  // Many GoCardless integrations do not support getting more than 90 days
+  // Many GoCardless integrations do not support getting more than 30 days
   // worth of data, so make that the earliest possible limit.
-  const dates = [monthUtils.subDays(monthUtils.currentDay(), 90)];
+  const dates = [monthUtils.subDays(monthUtils.currentDay(), 30)];
 
   const oldestTransaction = await getAccountOldestTransaction(id);
 
