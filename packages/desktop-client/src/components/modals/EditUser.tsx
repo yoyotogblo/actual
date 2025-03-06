@@ -1,39 +1,33 @@
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { addNotification, popModal, signOut } from 'loot-core/client/actions';
+import { Button } from '@actual-app/components/button';
+import { Stack } from '@actual-app/components/stack';
+import { styles } from '@actual-app/components/styles';
+import { Text } from '@actual-app/components/text';
+import { View } from '@actual-app/components/view';
+
+import { addNotification, signOut } from 'loot-core/client/actions';
+import {
+  type Modal as ModalType,
+  popModal,
+} from 'loot-core/client/modals/modalsSlice';
 import { send } from 'loot-core/platform/client/fetch';
 import {
+  type NewUserEntity,
   PossibleRoles,
   type UserEntity,
-} from 'loot-core/src/types/models/user';
+} from 'loot-core/types/models/user';
 
 import { useDispatch } from '../../redux';
-import { styles, theme } from '../../style';
-import { Button } from '../common/Button2';
+import { theme } from '../../style';
 import { Input } from '../common/Input';
 import { Modal, ModalCloseButton, ModalHeader } from '../common/Modal';
 import { Select } from '../common/Select';
-import { Stack } from '../common/Stack';
-import { Text } from '../common/Text';
-import { View } from '../common/View';
 import { Checkbox, FormField, FormLabel } from '../forms';
 
 type User = UserEntity;
-
-type EditUserProps = {
-  defaultUser: User;
-  onSave: (
-    method: 'user-add' | 'user-update',
-    user: User,
-    setError: (error: string) => void,
-  ) => Promise<void>;
-};
-
-type EditUserFinanceAppProps = {
-  defaultUser: User;
-  onSave: (user: User) => void;
-};
+type NewUser = NewUserEntity;
 
 function useGetUserDirectoryErrors() {
   const { t } = useTranslation();
@@ -119,20 +113,25 @@ function useSaveUser() {
   return { saveUser };
 }
 
+type EditUserFinanceAppProps = Extract<
+  ModalType,
+  { name: 'edit-user' }
+>['options'];
+
 export function EditUserFinanceApp({
-  defaultUser,
+  user: defaultUser,
   onSave: originalOnSave,
 }: EditUserFinanceAppProps) {
   const { t } = useTranslation();
   const { saveUser } = useSaveUser();
-
+  const isExistingUser = 'id' in defaultUser && !!defaultUser.id;
   return (
     <Modal name="edit-user">
       {({ state: { close } }) => (
         <>
           <ModalHeader
             title={
-              defaultUser.id
+              isExistingUser
                 ? t('Edit user {{userName}}', {
                     userName: defaultUser.displayName ?? defaultUser.userName,
                   })
@@ -155,9 +154,20 @@ export function EditUserFinanceApp({
   );
 }
 
+type EditUserProps = {
+  defaultUser: User | NewUser;
+  onSave: (
+    method: 'user-add' | 'user-update',
+    user: User,
+    setError: (error: string) => void,
+  ) => Promise<void>;
+};
+
 function EditUser({ defaultUser, onSave: originalOnSave }: EditUserProps) {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const isExistingUser = 'id' in defaultUser && !!defaultUser.id;
+  const isOwner = 'owner' in defaultUser && defaultUser.owner;
 
   const [userName, setUserName] = useState<string>(defaultUser.userName ?? '');
   const [displayName, setDisplayName] = useState<string>(
@@ -178,13 +188,15 @@ function EditUser({ defaultUser, onSave: originalOnSave }: EditUserProps) {
     }
     const user: User = {
       ...defaultUser,
+      id: isExistingUser ? defaultUser.id : '',
+      owner: isOwner,
       userName,
       displayName,
       enabled,
       role,
     };
 
-    const method = user.id ? 'user-update' : 'user-add';
+    const method = isExistingUser ? 'user-update' : 'user-add';
     await originalOnSave(method, user, setError);
   }
 
@@ -222,9 +234,9 @@ function EditUser({ defaultUser, onSave: originalOnSave }: EditUserProps) {
           <Checkbox
             id="enabled-field"
             checked={enabled}
-            disabled={defaultUser.owner}
+            disabled={isOwner}
             style={{
-              color: defaultUser.owner ? theme.pageTextSubdued : 'inherit',
+              color: isOwner ? theme.pageTextSubdued : 'inherit',
             }}
             onChange={() => setEnabled(!enabled)}
           />
@@ -233,7 +245,7 @@ function EditUser({ defaultUser, onSave: originalOnSave }: EditUserProps) {
           </label>
         </View>
       </Stack>
-      {defaultUser.owner && (
+      {isOwner && (
         <label
           style={{
             ...styles.verySmallText,
@@ -288,7 +300,7 @@ function EditUser({ defaultUser, onSave: originalOnSave }: EditUserProps) {
           <FormLabel title="Role" htmlFor="role-field" />
           <Select
             id="role-field"
-            disabled={defaultUser.owner}
+            disabled={isOwner}
             options={Object.entries(PossibleRoles)}
             value={role}
             onChange={newValue => setRole(newValue)}
@@ -315,7 +327,7 @@ function EditUser({ defaultUser, onSave: originalOnSave }: EditUserProps) {
           <Trans>Cancel</Trans>
         </Button>
         <Button variant="primary" onPress={onSave}>
-          {defaultUser.id ? 'Save' : 'Add'}
+          {isExistingUser ? 'Save' : 'Add'}
         </Button>
       </Stack>
     </>

@@ -1,7 +1,14 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { send } from '../../platform/client/fetch';
-import { type AccountEntity, type TransactionEntity } from '../../types/models';
+import { type SyncResponseWithErrors } from '../../server/accounts/app';
+import {
+  type SyncServerGoCardlessAccount,
+  type AccountEntity,
+  type TransactionEntity,
+  type SyncServerSimpleFinAccount,
+  type SyncServerPluggyAiAccount,
+} from '../../types/models';
 import { addNotification } from '../actions';
 import {
   getAccounts,
@@ -80,9 +87,9 @@ export const unlinkAccount = createAppAsyncThunk(
 
 type LinkAccountPayload = {
   requisitionId: string;
-  account: unknown;
-  upgradingId?: AccountEntity['id'];
-  offBudget?: boolean;
+  account: SyncServerGoCardlessAccount;
+  upgradingId?: AccountEntity['id'] | undefined;
+  offBudget?: boolean | undefined;
 };
 
 export const linkAccount = createAppAsyncThunk(
@@ -103,9 +110,9 @@ export const linkAccount = createAppAsyncThunk(
 );
 
 type LinkAccountSimpleFinPayload = {
-  externalAccount: unknown;
-  upgradingId?: AccountEntity['id'];
-  offBudget?: boolean;
+  externalAccount: SyncServerSimpleFinAccount;
+  upgradingId?: AccountEntity['id'] | undefined;
+  offBudget?: boolean | undefined;
 };
 
 export const linkAccountSimpleFin = createAppAsyncThunk(
@@ -124,22 +131,31 @@ export const linkAccountSimpleFin = createAppAsyncThunk(
   },
 );
 
-type SyncResponse = {
-  errors: Array<{
-    type: string;
-    category: string;
-    code: string;
-    message: string;
-    internal?: string;
-  }>;
-  newTransactions: Array<TransactionEntity['id']>;
-  matchedTransactions: Array<TransactionEntity['id']>;
-  updatedAccounts: Array<AccountEntity['id']>;
+type LinkAccountPluggyAiPayload = {
+  externalAccount: SyncServerPluggyAiAccount;
+  upgradingId?: AccountEntity['id'];
+  offBudget?: boolean;
 };
+
+export const linkAccountPluggyAi = createAppAsyncThunk(
+  `${sliceName}/linkAccountPluggyAi`,
+  async (
+    { externalAccount, upgradingId, offBudget }: LinkAccountPluggyAiPayload,
+    { dispatch },
+  ) => {
+    await send('pluggyai-accounts-link', {
+      externalAccount,
+      upgradingId,
+      offBudget,
+    });
+    dispatch(getPayees());
+    dispatch(getAccounts());
+  },
+);
 
 function handleSyncResponse(
   accountId: AccountEntity['id'],
-  res: SyncResponse,
+  res: SyncResponseWithErrors,
   dispatch: AppDispatch,
   resNewTransactions: Array<TransactionEntity['id']>,
   resMatchedTransactions: Array<TransactionEntity['id']>,
@@ -153,7 +169,7 @@ function handleSyncResponse(
   if (error) {
     // We only want to mark the account as having problem if it
     // was a real syncing error.
-    if (error.type === 'SyncError') {
+    if ('type' in error && error.type === 'SyncError') {
       dispatch(
         markAccountFailed({
           id: accountId,
@@ -168,7 +184,7 @@ function handleSyncResponse(
 
   // Dispatch errors (if any)
   errors.forEach(error => {
-    if (error.type === 'SyncError') {
+    if ('type' in error && error.type === 'SyncError') {
       dispatch(
         addNotification({
           type: 'error',
@@ -180,7 +196,7 @@ function handleSyncResponse(
         addNotification({
           type: 'error',
           message: error.message,
-          internal: error.internal,
+          internal: 'internal' in error ? error.internal : undefined,
         }),
       );
     }
@@ -190,11 +206,13 @@ function handleSyncResponse(
   resMatchedTransactions.push(...matchedTransactions);
   resUpdatedAccounts.push(...updatedAccounts);
 
+  dispatch(getAccounts());
+
   return newTransactions.length > 0 || matchedTransactions.length > 0;
 }
 
 type SyncAccountsPayload = {
-  id?: AccountEntity['id'];
+  id?: AccountEntity['id'] | undefined;
 };
 
 export const syncAccounts = createAppAsyncThunk(
@@ -320,6 +338,7 @@ export const actions = {
   ...accountsSlice.actions,
   linkAccount,
   linkAccountSimpleFin,
+  linkAccountPluggyAi,
   moveAccount,
   unlinkAccount,
   syncAccounts,

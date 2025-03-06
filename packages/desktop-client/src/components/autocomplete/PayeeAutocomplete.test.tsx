@@ -2,7 +2,7 @@ import { render, type Screen, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
-import { generateAccount } from 'loot-core/src/mocks';
+import { generateAccount } from 'loot-core/mocks';
 import type { AccountEntity, PayeeEntity } from 'loot-core/types/models';
 
 import { AuthProvider } from '../../auth/AuthProvider';
@@ -39,7 +39,7 @@ function makePayee(name: string, options?: { favorite: boolean }): PayeeEntity {
   return {
     id: name.toLowerCase() + '-id',
     name,
-    favorite: options?.favorite ? 1 : 0,
+    favorite: options?.favorite ? true : false,
     transfer_acct: undefined,
   };
 }

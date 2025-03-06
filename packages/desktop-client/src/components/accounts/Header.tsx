@@ -8,6 +8,16 @@ import React, {
 import { useHotkeys } from 'react-hotkeys-hook';
 import { Trans, useTranslation } from 'react-i18next';
 
+import { Button } from '@actual-app/components/button';
+import { InitialFocus } from '@actual-app/components/initial-focus';
+import { Menu } from '@actual-app/components/menu';
+import { Popover } from '@actual-app/components/popover';
+import { Stack } from '@actual-app/components/stack';
+import { styles } from '@actual-app/components/styles';
+import { Tooltip } from '@actual-app/components/tooltip';
+import { View } from '@actual-app/components/view';
+
+import { tsToRelativeTime } from 'loot-core/shared/util';
 import {
   type AccountEntity,
   type RuleConditionEntity,
@@ -15,6 +25,7 @@ import {
   type TransactionFilterEntity,
 } from 'loot-core/types/models';
 
+import { useGlobalPref } from '../../hooks/useGlobalPref';
 import { useLocalPref } from '../../hooks/useLocalPref';
 import { useSplitsExpanded } from '../../hooks/useSplitsExpanded';
 import { useSyncServerStatus } from '../../hooks/useSyncServerStatus';
@@ -27,17 +38,11 @@ import {
   SvgLockClosed,
   SvgPencil1,
 } from '../../icons/v2';
-import { theme, styles } from '../../style';
+import { theme } from '../../style';
 import { AnimatedRefresh } from '../AnimatedRefresh';
-import { Button } from '../common/Button2';
-import { InitialFocus } from '../common/InitialFocus';
 import { Input } from '../common/Input';
-import { Menu } from '../common/Menu';
 import { MenuButton } from '../common/MenuButton';
-import { Popover } from '../common/Popover';
 import { Search } from '../common/Search';
-import { Stack } from '../common/Stack';
-import { View } from '../common/View';
 import { FilterButton } from '../filters/FiltersMenu';
 import { FiltersStack } from '../filters/FiltersStack';
 import { type SavedFilter } from '../filters/SavedFilterMenuButton';
@@ -183,6 +188,8 @@ export function AccountHeader({
   onMakeAsNonSplitTransactions,
 }: AccountHeaderProps) {
   const { t } = useTranslation();
+  const [language] = useGlobalPref('language');
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -372,19 +379,33 @@ export function AccountHeader({
               onMakeAsNonSplitTransactions={onMakeAsNonSplitTransactions}
             />
           )}
-          <View style={{ flex: '0 0 auto' }}>
+          <View style={{ flex: '0 0 auto', marginLeft: 10 }}>
             {account && (
-              <>
+              <Tooltip
+                style={{
+                  ...styles.tooltip,
+                  marginBottom: 10,
+                }}
+                content={
+                  account?.last_reconciled
+                    ? `${t('Reconciled')} ${tsToRelativeTime(account.last_reconciled, language || 'en-US')}`
+                    : t('Not yet reconciled')
+                }
+                placement="top"
+                triggerProps={{
+                  isDisabled: reconcileOpen,
+                }}
+              >
                 <Button
                   ref={reconcileRef}
                   variant="bare"
                   aria-label={t('Reconcile')}
-                  style={{ padding: 6, marginLeft: 10 }}
+                  style={{ padding: 6 }}
                   onPress={() => {
                     setReconcileOpen(true);
                   }}
                 >
-                  <View title={t('Reconcile')}>
+                  <View>
                     <SvgLockClosed width={14} height={14} />
                   </View>
                 </Button>
@@ -401,7 +422,7 @@ export function AccountHeader({
                     onReconcile={onReconcile}
                   />
                 </Popover>
-              </>
+              </Tooltip>
             )}
           </View>
           <Button

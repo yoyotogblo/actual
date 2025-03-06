@@ -1,13 +1,15 @@
-import React, {
-  type ComponentPropsWithoutRef,
-  type CSSProperties,
-} from 'react';
+import React, { type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { styles } from '@actual-app/components/styles';
+import { Text } from '@actual-app/components/text';
+import { View } from '@actual-app/components/view';
+
+import { type Modal as ModalType } from 'loot-core/client/modals/modalsSlice';
 import { envelopeBudget } from 'loot-core/client/queries';
 
 import { useCategory } from '../../hooks/useCategory';
-import { theme, styles } from '../../style';
+import { theme } from '../../style';
 import {
   BalanceWithCarryover,
   CarryoverIndicator,
@@ -19,12 +21,11 @@ import {
   ModalHeader,
   ModalTitle,
 } from '../common/Modal';
-import { Text } from '../common/Text';
-import { View } from '../common/View';
 import { CellValueText } from '../spreadsheet/CellValue';
 
-type EnvelopeBalanceMenuModalProps = ComponentPropsWithoutRef<
-  typeof BalanceMenu
+type EnvelopeBalanceMenuModalProps = Omit<
+  Extract<ModalType, { name: 'envelope-balance-menu' }>['options'],
+  'month'
 >;
 
 export function EnvelopeBalanceMenuModal({

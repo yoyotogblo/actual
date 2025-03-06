@@ -1,4 +1,7 @@
 // @ts-strict-ignore
+import { formatDistanceToNow } from 'date-fns';
+import * as locales from 'date-fns/locale';
+
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1];
 }
@@ -45,7 +48,7 @@ export function hasFieldsChanged<T extends object>(
 export type Diff<T extends { id: string }> = {
   added: T[];
   updated: Partial<T>[];
-  deleted: Partial<T>[];
+  deleted: Pick<T, 'id'>[];
 };
 
 export function applyChanges<T extends { id: string }>(
@@ -129,9 +132,9 @@ export function diffItems<T extends { id: string }>(
   const added: T[] = [];
   const updated: Partial<T>[] = [];
 
-  const deleted: Partial<T>[] = items
+  const deleted: Pick<T, 'id'>[] = items
     .filter(item => !newGrouped.has(item.id))
-    .map(item => ({ id: item.id }) as Partial<T>);
+    .map(item => ({ id: item.id }));
 
   newItems.forEach(newItem => {
     const item = grouped.get(newItem.id);
@@ -210,7 +213,7 @@ export function appendDecimals(
   amountText: string,
   hideDecimals = false,
 ): string {
-  const { separator } = getNumberFormat();
+  const { decimalSeparator: separator } = getNumberFormat();
   let result = amountText;
   if (result.slice(-1) === separator) {
     result = result.slice(0, -1);
@@ -283,47 +286,44 @@ export function getNumberFormat({
   format?: NumberFormats;
   hideFraction: boolean;
 } = numberFormatConfig) {
-  let locale, regex, separator, separatorRegex;
+  let locale, thousandsSeparator, decimalSeparator;
 
   switch (format) {
     case 'space-comma':
       locale = 'en-SE';
-      regex = /[^-0-9,.]/g;
-      separator = ',';
-      separatorRegex = /[,.]/g;
+      thousandsSeparator = '\xa0';
+      decimalSeparator = ',';
       break;
     case 'dot-comma':
       locale = 'de-DE';
-      regex = /[^-0-9,]/g;
-      separator = ',';
+      thousandsSeparator = '.';
+      decimalSeparator = ',';
       break;
     case 'apostrophe-dot':
       locale = 'de-CH';
-      regex = /[^-0-9,.]/g;
-      separator = '.';
-      separatorRegex = /[,.]/g;
+      thousandsSeparator = '’';
+      decimalSeparator = '.';
       break;
     case 'comma-dot-in':
       locale = 'en-IN';
-      regex = /[^-0-9.]/g;
-      separator = '.';
+      thousandsSeparator = ',';
+      decimalSeparator = '.';
       break;
     case 'comma-dot':
     default:
       locale = 'en-US';
-      regex = /[^-0-9.]/g;
-      separator = '.';
+      thousandsSeparator = ',';
+      decimalSeparator = '.';
   }
 
   return {
     value: format,
-    separator,
+    thousandsSeparator,
+    decimalSeparator,
     formatter: new Intl.NumberFormat(locale, {
       minimumFractionDigits: hideFraction ? 0 : 2,
       maximumFractionDigits: hideFraction ? 0 : 2,
     }),
-    regex,
-    separatorRegex,
   };
 }
 
@@ -390,23 +390,25 @@ export function amountToCurrencyNoDecimal(amount: Amount): CurrencyAmount {
   }).formatter.format(amount);
 }
 
-export function currencyToAmount(
-  currencyAmount: CurrencyAmount,
-): Amount | null {
-  let amount;
-  if (getNumberFormat().separatorRegex) {
-    amount = parseFloat(
-      currencyAmount
-        .replace(getNumberFormat().regex, '')
-        .replace(getNumberFormat().separatorRegex, '.'),
-    );
+export function currencyToAmount(currencyAmount: string): Amount | null {
+  let integer, fraction;
+
+  // match the last dot or comma in the string
+  const match = currencyAmount.match(/[,.](?=[^.,]*$)/);
+
+  if (
+    !match ||
+    (match[0] === getNumberFormat().thousandsSeparator &&
+      match.index + 4 <= currencyAmount.length)
+  ) {
+    fraction = null;
+    integer = currencyAmount.replace(/[^\d-]/g, '');
   } else {
-    amount = parseFloat(
-      currencyAmount
-        .replace(getNumberFormat().regex, '')
-        .replace(getNumberFormat().separator, '.'),
-    );
+    integer = currencyAmount.slice(0, match.index).replace(/[^\d-]/g, '');
+    fraction = currencyAmount.slice(match.index + 1);
   }
+
+  const amount = parseFloat(integer + '.' + fraction);
   return isNaN(amount) ? null : amount;
 }
 
@@ -481,4 +483,29 @@ export function sortByKey<T>(arr: T[], key: keyof T): T[] {
     }
     return 0;
   });
+}
+
+// Date utilities
+
+export function tsToRelativeTime(
+  ts: string | null,
+  language: string,
+  options: {
+    capitalize: boolean;
+  } = { capitalize: false },
+): string {
+  if (!ts) return 'Unknown';
+
+  const parsed = new Date(parseInt(ts, 10));
+  const locale =
+    locales[language.replace('-', '') as keyof typeof locales] ??
+    locales['enUS'];
+
+  let distance = formatDistanceToNow(parsed, { addSuffix: true, locale });
+
+  if (options.capitalize) {
+    distance = distance.charAt(0).toUpperCase() + distance.slice(1);
+  }
+
+  return distance;
 }

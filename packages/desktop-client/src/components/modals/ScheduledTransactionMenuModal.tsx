@@ -5,7 +5,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Menu } from '@actual-app/components/menu';
+import { styles } from '@actual-app/components/styles';
+import { Text } from '@actual-app/components/text';
+import { View } from '@actual-app/components/view';
+
 import { useSchedules } from 'loot-core/client/data-hooks/schedules';
+import { type Modal as ModalType } from 'loot-core/client/modals/modalsSlice';
 import { format } from 'loot-core/shared/months';
 import { q } from 'loot-core/shared/query';
 import {
@@ -13,18 +19,18 @@ import {
   extractScheduleConds,
 } from 'loot-core/shared/schedules';
 
-import { theme, styles } from '../../style';
-import { Menu } from '../common/Menu';
+import { theme } from '../../style';
 import {
   Modal,
   ModalCloseButton,
   ModalHeader,
   ModalTitle,
 } from '../common/Modal';
-import { Text } from '../common/Text';
-import { View } from '../common/View';
 
-type ScheduledTransactionMenuModalProps = ScheduledTransactionMenuProps;
+type ScheduledTransactionMenuModalProps = Extract<
+  ModalType,
+  { name: 'scheduled-transaction-menu' }
+>['options'];
 
 export function ScheduledTransactionMenuModal({
   transactionId,

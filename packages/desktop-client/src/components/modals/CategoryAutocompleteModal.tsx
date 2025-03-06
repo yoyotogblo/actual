@@ -1,7 +1,10 @@
-import React, { type ComponentPropsWithoutRef } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import * as monthUtils from 'loot-core/src/shared/months';
+import { View } from '@actual-app/components/view';
+
+import { type Modal as ModalType } from 'loot-core/client/modals/modalsSlice';
+import * as monthUtils from 'loot-core/shared/months';
 
 import { theme } from '../../style';
 import { CategoryAutocomplete } from '../autocomplete/CategoryAutocomplete';
@@ -11,20 +14,20 @@ import {
   ModalTitle,
   ModalHeader,
 } from '../common/Modal';
-import { View } from '../common/View';
 import { SectionLabel } from '../forms';
 import { useResponsive } from '../responsive/ResponsiveProvider';
 import { NamespaceContext } from '../spreadsheet/NamespaceContext';
 
-type CategoryAutocompleteModalProps = {
-  autocompleteProps: ComponentPropsWithoutRef<typeof CategoryAutocomplete>;
-  onClose: () => void;
-  month?: string;
-};
+type CategoryAutocompleteModalProps = Extract<
+  ModalType,
+  { name: 'category-autocomplete' }
+>['options'];
 
 export function CategoryAutocompleteModal({
-  autocompleteProps,
   month,
+  onSelect,
+  categoryGroups,
+  showHiddenCategories,
   onClose,
 }: CategoryAutocompleteModalProps) {
   const { t } = useTranslation();
@@ -41,7 +44,9 @@ export function CategoryAutocompleteModal({
       onClose={onClose}
       containerProps={{
         style: {
-          height: isNarrowWidth ? '85vh' : 275,
+          height: isNarrowWidth
+            ? 'calc(var(--visual-viewport-height) * 0.85)'
+            : 275,
           backgroundColor: theme.menuAutoCompleteBackground,
         },
       }}
@@ -86,7 +91,10 @@ export function CategoryAutocompleteModal({
                   showSplitOption={false}
                   onClose={close}
                   {...defaultAutocompleteProps}
-                  {...autocompleteProps}
+                  onSelect={onSelect}
+                  categoryGroups={categoryGroups}
+                  showHiddenCategories={showHiddenCategories}
+                  value={null}
                 />
               </NamespaceContext.Provider>
             </View>

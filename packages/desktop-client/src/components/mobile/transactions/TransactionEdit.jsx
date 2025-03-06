@@ -7,9 +7,13 @@ import React, {
   useMemo,
   useCallback,
 } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 
+import { styles } from '@actual-app/components/styles';
+import { Text } from '@actual-app/components/text';
+import { Toggle } from '@actual-app/components/toggle';
+import { View } from '@actual-app/components/view';
 import {
   format as formatDate,
   parse as parseDate,
@@ -18,7 +22,7 @@ import {
 } from 'date-fns';
 import { UAParser } from 'ua-parser-js';
 
-import { pushModal } from 'loot-core/client/actions';
+import { pushModal } from 'loot-core/client/modals/modalsSlice';
 import { setLastTransaction } from 'loot-core/client/queries/queriesSlice';
 import { runQuery } from 'loot-core/client/query-helpers';
 import { send } from 'loot-core/platform/client/fetch';
@@ -57,11 +61,8 @@ import { SvgSplit } from '../../../icons/v0';
 import { SvgAdd, SvgPiggyBank, SvgTrash } from '../../../icons/v1';
 import { SvgPencilWriteAlternate } from '../../../icons/v2';
 import { useSelector, useDispatch } from '../../../redux';
-import { styles, theme } from '../../../style';
+import { theme } from '../../../style';
 import { Button } from '../../common/Button';
-import { Text } from '../../common/Text';
-import { Toggle } from '../../common/Toggle';
-import { View } from '../../common/View';
 import { MobilePageHeader, Page } from '../../Page';
 import { AmountInput } from '../../util/AmountInput';
 import { MobileBackButton } from '../MobileBackButton';
@@ -235,7 +236,7 @@ function Footer({
               marginLeft: 6,
             }}
           >
-            Select account
+            <Trans>Select account</Trans>
           </Text>
         </Button>
       ) : isAdding ? (
@@ -253,7 +254,7 @@ function Footer({
               marginLeft: 5,
             }}
           >
-            Add transaction
+            <Trans>Add transaction</Trans>
           </Text>
         </Button>
       ) : (
@@ -558,9 +559,14 @@ const TransactionEditInner = memo(function TransactionEditInner({
       // Should we bring that here as well? Or does the nature of the editing form
       // make this more appropriate?
       dispatch(
-        pushModal('confirm-transaction-edit', {
-          onConfirm: onConfirmSave,
-          confirmReason: 'editReconciled',
+        pushModal({
+          modal: {
+            name: 'confirm-transaction-edit',
+            options: {
+              onConfirm: onConfirmSave,
+              confirmReason: 'editReconciled',
+            },
+          },
         }),
       );
     } else {
@@ -602,52 +608,76 @@ const TransactionEditInner = memo(function TransactionEditInner({
         switch (name) {
           case 'category':
             dispatch(
-              pushModal('category-autocomplete', {
-                categoryGroups,
-                month: monthUtils.monthFromDate(unserializedTransaction.date),
-                onSelect: categoryId => {
-                  onUpdateInner(transactionToEdit, name, categoryId);
-                },
-                onClose: () => {
-                  onClearActiveEdit();
+              pushModal({
+                modal: {
+                  name: 'category-autocomplete',
+                  options: {
+                    categoryGroups,
+                    month: monthUtils.monthFromDate(
+                      unserializedTransaction.date,
+                    ),
+                    onSelect: categoryId => {
+                      onUpdateInner(transactionToEdit, name, categoryId);
+                    },
+                    onClose: () => {
+                      onClearActiveEdit();
+                    },
+                  },
                 },
               }),
             );
             break;
           case 'account':
             dispatch(
-              pushModal('account-autocomplete', {
-                onSelect: accountId => {
-                  onUpdateInner(transactionToEdit, name, accountId);
-                },
-                onClose: () => {
-                  onClearActiveEdit();
+              pushModal({
+                modal: {
+                  name: 'account-autocomplete',
+                  options: {
+                    onSelect: accountId => {
+                      onUpdateInner(transactionToEdit, name, accountId);
+                    },
+                    onClose: () => {
+                      onClearActiveEdit();
+                    },
+                  },
                 },
               }),
             );
             break;
           case 'payee':
             dispatch(
-              pushModal('payee-autocomplete', {
-                onSelect: payeeId => {
-                  onUpdateInner(transactionToEdit, name, payeeId);
-                },
-                onClose: () => {
-                  onClearActiveEdit();
+              pushModal({
+                modal: {
+                  name: 'payee-autocomplete',
+                  options: {
+                    onSelect: payeeId => {
+                      onUpdateInner(transactionToEdit, name, payeeId);
+                    },
+                    onClose: () => {
+                      onClearActiveEdit();
+                    },
+                  },
                 },
               }),
             );
             break;
           default:
             dispatch(
-              pushModal('edit-field', {
-                name,
-                month: monthUtils.monthFromDate(unserializedTransaction.date),
-                onSubmit: (name, value) => {
-                  onUpdateInner(transactionToEdit, name, value);
-                },
-                onClose: () => {
-                  onClearActiveEdit();
+              pushModal({
+                modal: {
+                  name: 'edit-field',
+                  options: {
+                    name,
+                    month: monthUtils.monthFromDate(
+                      unserializedTransaction.date,
+                    ),
+                    onSubmit: (name, value) => {
+                      onUpdateInner(transactionToEdit, name, value);
+                    },
+                    onClose: () => {
+                      onClearActiveEdit();
+                    },
+                  },
                 },
               }),
             );
@@ -673,17 +703,22 @@ const TransactionEditInner = memo(function TransactionEditInner({
 
       const onConfirmDelete = () => {
         dispatch(
-          pushModal('confirm-transaction-delete', {
-            onConfirm: () => {
-              onDelete(id);
+          pushModal({
+            modal: {
+              name: 'confirm-transaction-delete',
+              options: {
+                onConfirm: () => {
+                  onDelete(id);
 
-              if (unserializedTransaction.id !== id) {
-                // Only a child transaction was deleted.
-                onClearActiveEdit();
-                return;
-              }
+                  if (unserializedTransaction.id !== id) {
+                    // Only a child transaction was deleted.
+                    onClearActiveEdit();
+                    return;
+                  }
 
-              navigate(-1);
+                  navigate(-1);
+                },
+              },
             },
           }),
         );
@@ -691,9 +726,14 @@ const TransactionEditInner = memo(function TransactionEditInner({
 
       if (unserializedTransaction.reconciled) {
         dispatch(
-          pushModal('confirm-transaction-edit', {
-            onConfirm: onConfirmDelete,
-            confirmReason: 'deleteReconciled',
+          pushModal({
+            modal: {
+              name: 'confirm-transaction-edit',
+              options: {
+                onConfirm: onConfirmDelete,
+                confirmReason: 'deleteReconciled',
+              },
+            },
           }),
         );
       } else {
@@ -749,8 +789,8 @@ const TransactionEditInner = memo(function TransactionEditInner({
           title={
             transaction.payee == null
               ? isAdding
-                ? 'New Transaction'
-                : 'Transaction'
+                ? t('New Transaction')
+                : t('Transaction')
               : title
           }
           leftContent={<MobileBackButton />}

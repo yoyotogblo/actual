@@ -3,17 +3,23 @@ import React, { useState } from 'react';
 import { Form } from 'react-aria-components';
 import { useTranslation, Trans } from 'react-i18next';
 
+import { ButtonWithLoading } from '@actual-app/components/button';
+import { InitialFocus } from '@actual-app/components/initial-focus';
+import { Paragraph } from '@actual-app/components/paragraph';
+import { styles } from '@actual-app/components/styles';
+import { Text } from '@actual-app/components/text';
+import { View } from '@actual-app/components/view';
 import { css } from '@emotion/css';
 
-import { loadAllFiles, loadGlobalPrefs } from 'loot-core/client/actions';
+import { loadGlobalPrefs } from 'loot-core/client/actions';
 import { sync } from 'loot-core/client/app/appSlice';
-import { send } from 'loot-core/src/platform/client/fetch';
-import { getCreateKeyError } from 'loot-core/src/shared/errors';
+import { loadAllFiles } from 'loot-core/client/budgets/budgetsSlice';
+import { type Modal as ModalType } from 'loot-core/client/modals/modalsSlice';
+import { send } from 'loot-core/platform/client/fetch';
+import { getCreateKeyError } from 'loot-core/shared/errors';
 
 import { useDispatch } from '../../redux';
-import { styles, theme } from '../../style';
-import { ButtonWithLoading } from '../common/Button2';
-import { InitialFocus } from '../common/InitialFocus';
+import { theme } from '../../style';
 import { Input } from '../common/Input';
 import { Link } from '../common/Link';
 import {
@@ -22,19 +28,15 @@ import {
   ModalCloseButton,
   ModalHeader,
 } from '../common/Modal';
-import { Paragraph } from '../common/Paragraph';
-import { Text } from '../common/Text';
-import { View } from '../common/View';
 import { useResponsive } from '../responsive/ResponsiveProvider';
 
-type CreateEncryptionKeyModalProps = {
-  options: {
-    recreate?: boolean;
-  };
-};
+type CreateEncryptionKeyModalProps = Extract<
+  ModalType,
+  { name: 'create-encryption-key' }
+>['options'];
 
 export function CreateEncryptionKeyModal({
-  options = {},
+  recreate,
 }: CreateEncryptionKeyModalProps) {
   const { t } = useTranslation();
   const [password, setPassword] = useState('');
@@ -44,7 +46,7 @@ export function CreateEncryptionKeyModal({
   const { isNarrowWidth } = useResponsive();
   const dispatch = useDispatch();
 
-  const isRecreating = options.recreate;
+  const isRecreating = recreate;
 
   async function onCreateKey(close: () => void) {
     if (password !== '' && !loading) {

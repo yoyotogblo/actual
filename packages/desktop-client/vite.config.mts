@@ -103,10 +103,16 @@ export default defineConfig(async ({ mode }) => {
     ];
   }
 
+  const browserOpen = env.BROWSER_OPEN ? `//${env.BROWSER_OPEN}` : true;
+
   return {
     base: '/',
     envPrefix: 'REACT_APP_',
     build: {
+      terserOptions: {
+        compress: false,
+        mangle: false,
+      },
       target: 'es2022',
       sourcemap: true,
       outDir: mode === 'desktop' ? 'build-electron' : 'build',
@@ -139,7 +145,7 @@ export default defineConfig(async ({ mode }) => {
         ? ['chrome', 'firefox', 'edge', 'browser', 'browserPrivate'].includes(
             env.BROWSER,
           )
-        : true,
+        : browserOpen,
       watch: {
         disableGlobbing: false,
       },

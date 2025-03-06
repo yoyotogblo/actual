@@ -2,26 +2,27 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Button } from '@actual-app/components/button';
+import { styles } from '@actual-app/components/styles';
+import { View } from '@actual-app/components/view';
 import { css } from '@emotion/css';
 
-import * as monthUtils from 'loot-core/src/shared/months';
+import { type Modal as ModalType } from 'loot-core/client/modals/modalsSlice';
+import * as monthUtils from 'loot-core/shared/months';
 
 import { useNotes } from '../../hooks/useNotes';
 import { useUndo } from '../../hooks/useUndo';
 import { SvgCheveronDown, SvgCheveronUp } from '../../icons/v1';
 import { SvgNotesPaper } from '../../icons/v2';
-import { type CSSProperties, styles, theme } from '../../style';
+import { type CSSProperties, theme } from '../../style';
 import { BudgetMonthMenu } from '../budget/tracking/budgetsummary/BudgetMonthMenu';
-import { Button } from '../common/Button2';
 import { Modal, ModalCloseButton, ModalHeader } from '../common/Modal';
-import { View } from '../common/View';
 import { Notes } from '../Notes';
 
-type TrackingBudgetMonthMenuModalProps = {
-  month: string;
-  onBudgetAction: (month: string, action: string, arg?: unknown) => void;
-  onEditNotes: (month: string) => void;
-};
+type TrackingBudgetMonthMenuModalProps = Extract<
+  ModalType,
+  { name: 'tracking-budget-month-menu' }
+>['options'];
 
 export function TrackingBudgetMonthMenuModal({
   month,

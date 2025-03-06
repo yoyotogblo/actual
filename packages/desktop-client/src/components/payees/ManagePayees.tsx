@@ -7,11 +7,14 @@ import {
 } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
+import { Button } from '@actual-app/components/button';
+import { Popover } from '@actual-app/components/popover';
+import { View } from '@actual-app/components/view';
 import memoizeOne from 'memoize-one';
 
-import { pushModal } from 'loot-core/client/actions';
-import { getNormalisedString } from 'loot-core/src/shared/normalisation';
-import { type Diff, groupById } from 'loot-core/src/shared/util';
+import { pushModal } from 'loot-core/client/modals/modalsSlice';
+import { getNormalisedString } from 'loot-core/shared/normalisation';
+import { type Diff, groupById } from 'loot-core/shared/util';
 import { type PayeeEntity } from 'loot-core/types/models';
 
 import {
@@ -23,10 +26,7 @@ import {
 import { SvgExpandArrow } from '../../icons/v0';
 import { useDispatch } from '../../redux';
 import { theme } from '../../style';
-import { Button } from '../common/Button2';
-import { Popover } from '../common/Popover';
 import { Search } from '../common/Search';
-import { View } from '../common/View';
 import { TableHeader, Cell, SelectCell } from '../table';
 
 import { PayeeMenu } from './PayeeMenu';
@@ -70,7 +70,7 @@ function PayeeTableHeader() {
 type ManagePayeesProps = {
   payees: PayeeEntity[];
   ruleCounts: ComponentProps<typeof PayeeTable>['ruleCounts'];
-  orphanedPayees: PayeeEntity[];
+  orphanedPayees: Array<Pick<PayeeEntity, 'id'>>;
   initialSelectedIds: string[];
   onBatchChange: (diff: Diff<PayeeEntity>) => void;
   onViewRules: ComponentProps<typeof PayeeTable>['onViewRules'];
@@ -154,16 +154,16 @@ export const ManagePayees = ({
   function onFavorite() {
     const allFavorited = [...selected.items]
       .map(id => payeesById[id].favorite)
-      .every(f => f === 1);
+      .every(f => f);
     if (allFavorited) {
       onBatchChange({
-        updated: [...selected.items].map(id => ({ id, favorite: 0 })),
+        updated: [...selected.items].map(id => ({ id, favorite: false })),
         added: [],
         deleted: [],
       });
     } else {
       onBatchChange({
-        updated: [...selected.items].map(id => ({ id, favorite: 1 })),
+        updated: [...selected.items].map(id => ({ id, favorite: true })),
         added: [],
         deleted: [],
       });
@@ -174,16 +174,22 @@ export const ManagePayees = ({
   function onLearn() {
     const allLearnCategories = [...selected.items]
       .map(id => payeesById[id].learn_categories)
-      .every(f => f === 1);
+      .every(f => f);
     if (allLearnCategories) {
       onBatchChange({
-        updated: [...selected.items].map(id => ({ id, learn_categories: 0 })),
+        updated: [...selected.items].map(id => ({
+          id,
+          learn_categories: false,
+        })),
         added: [],
         deleted: [],
       });
     } else {
       onBatchChange({
-        updated: [...selected.items].map(id => ({ id, learn_categories: 1 })),
+        updated: [...selected.items].map(id => ({
+          id,
+          learn_categories: true,
+        })),
         added: [],
         deleted: [],
       });
@@ -199,7 +205,7 @@ export const ManagePayees = ({
   }
 
   const onChangeCategoryLearning = useCallback(() => {
-    dispatch(pushModal('payee-category-learning'));
+    dispatch(pushModal({ modal: { name: 'payee-category-learning' } }));
   }, [dispatch]);
 
   const buttonsDisabled = selected.items.size === 0;

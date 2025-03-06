@@ -5,12 +5,13 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import {
-  collapseModals,
-  openAccountCloseModal,
-  pushModal,
-} from 'loot-core/client/actions';
+import { Button } from '@actual-app/components/button';
+import { styles } from '@actual-app/components/styles';
+import { Text } from '@actual-app/components/text';
+import { View } from '@actual-app/components/view';
+
 import { syncAndDownload } from 'loot-core/client/app/appSlice';
 import {
   accountSchedulesQuery,
@@ -20,6 +21,11 @@ import {
   useTransactions,
   useTransactionsSearch,
 } from 'loot-core/client/data-hooks/transactions';
+import {
+  collapseModals,
+  openAccountCloseModal,
+  pushModal,
+} from 'loot-core/client/modals/modalsSlice';
 import * as queries from 'loot-core/client/queries';
 import {
   markAccountRead,
@@ -39,10 +45,7 @@ import { useDateFormat } from '../../../hooks/useDateFormat';
 import { useFailedAccounts } from '../../../hooks/useFailedAccounts';
 import { useNavigate } from '../../../hooks/useNavigate';
 import { useSelector, useDispatch } from '../../../redux';
-import { styles, theme } from '../../../style';
-import { Button } from '../../common/Button2';
-import { Text } from '../../common/Text';
-import { View } from '../../common/View';
+import { theme } from '../../../style';
 import { MobilePageHeader, Page } from '../../Page';
 import { MobileBackButton } from '../MobileBackButton';
 import { AddTransactionButton } from '../transactions/AddTransactionButton';
@@ -124,10 +127,15 @@ function AccountHeader({ account }: { readonly account: AccountEntity }) {
   const onEditNotes = useCallback(
     (id: string) => {
       dispatch(
-        pushModal('notes', {
-          id: `account-${id}`,
-          name: account.name,
-          onSave: onSaveNotes,
+        pushModal({
+          modal: {
+            name: 'notes',
+            options: {
+              id: `account-${id}`,
+              name: account.name,
+              onSave: onSaveNotes,
+            },
+          },
         }),
       );
     },
@@ -135,7 +143,7 @@ function AccountHeader({ account }: { readonly account: AccountEntity }) {
   );
 
   const onCloseAccount = useCallback(() => {
-    dispatch(openAccountCloseModal(account.id));
+    dispatch(openAccountCloseModal({ accountId: account.id }));
   }, [account.id, dispatch]);
 
   const onReopenAccount = useCallback(() => {
@@ -144,12 +152,17 @@ function AccountHeader({ account }: { readonly account: AccountEntity }) {
 
   const onClick = useCallback(() => {
     dispatch(
-      pushModal('account-menu', {
-        accountId: account.id,
-        onSave,
-        onEditNotes,
-        onCloseAccount,
-        onReopenAccount,
+      pushModal({
+        modal: {
+          name: 'account-menu',
+          options: {
+            accountId: account.id,
+            onSave,
+            onEditNotes,
+            onCloseAccount,
+            onReopenAccount,
+          },
+        },
       }),
     );
   }, [
@@ -228,9 +241,10 @@ function TransactionListWithPreviews({
     | 'uncategorized';
   readonly accountName: AccountEntity['name'] | string;
 }) {
+  const { t } = useTranslation();
   const baseTransactionsQuery = useCallback(
     () =>
-      queries.transactions(accountId).options({ splits: 'none' }).select('*'),
+      queries.transactions(accountId).options({ splits: 'all' }).select('*'),
     [accountId],
   );
 
@@ -294,24 +308,41 @@ function TransactionListWithPreviews({
         navigate(`/transactions/${transaction.id}`);
       } else {
         dispatch(
-          pushModal('scheduled-transaction-menu', {
-            transactionId: transaction.id,
-            onPost: async transactionId => {
-              const parts = transactionId.split('/');
-              await send('schedule/post-transaction', { id: parts[1] });
-              dispatch(collapseModals('scheduled-transaction-menu'));
-            },
-            onSkip: async transactionId => {
-              const parts = transactionId.split('/');
-              await send('schedule/skip-next-date', { id: parts[1] });
-              dispatch(collapseModals('scheduled-transaction-menu'));
-            },
-            onComplete: async transactionId => {
-              const parts = transactionId.split('/');
-              await send('schedule/update', {
-                schedule: { id: parts[1], completed: true },
-              });
-              dispatch(collapseModals('scheduled-transaction-menu'));
+          pushModal({
+            modal: {
+              name: 'scheduled-transaction-menu',
+              options: {
+                transactionId: transaction.id,
+                onPost: async transactionId => {
+                  const parts = transactionId.split('/');
+                  await send('schedule/post-transaction', { id: parts[1] });
+                  dispatch(
+                    collapseModals({
+                      rootModalName: 'scheduled-transaction-menu',
+                    }),
+                  );
+                },
+                onSkip: async transactionId => {
+                  const parts = transactionId.split('/');
+                  await send('schedule/skip-next-date', { id: parts[1] });
+                  dispatch(
+                    collapseModals({
+                      rootModalName: 'scheduled-transaction-menu',
+                    }),
+                  );
+                },
+                onComplete: async transactionId => {
+                  const parts = transactionId.split('/');
+                  await send('schedule/update', {
+                    schedule: { id: parts[1], completed: true },
+                  });
+                  dispatch(
+                    collapseModals({
+                      rootModalName: 'scheduled-transaction-menu',
+                    }),
+                  );
+                },
+              },
             },
           }),
         );
@@ -326,7 +357,8 @@ function TransactionListWithPreviews({
   );
 
   const transactionsToDisplay = !isSearching
-    ? previewTransactions.concat(transactions)
+    ? // Do not render child transactions in the list, unless searching
+      previewTransactions.concat(transactions.filter(t => !t.is_child))
     : transactions;
 
   return (
@@ -338,10 +370,11 @@ function TransactionListWithPreviews({
       balanceUncleared={balanceQueries.uncleared}
       isLoadingMore={isLoadingMore}
       onLoadMore={loadMoreTransactions}
-      searchPlaceholder={`Search ${accountName}`}
+      searchPlaceholder={t('Search {{accountName}}', { accountName })}
       onSearch={onSearch}
       onOpenTransaction={onOpenTransaction}
       onRefresh={onRefresh}
+      account={account}
     />
   );
 }

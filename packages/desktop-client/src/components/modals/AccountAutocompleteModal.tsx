@@ -1,5 +1,9 @@
-import React, { type ComponentPropsWithoutRef } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { View } from '@actual-app/components/view';
+
+import { type Modal as ModalType } from 'loot-core/client/modals/modalsSlice';
 
 import { theme } from '../../style';
 import { AccountAutocomplete } from '../autocomplete/AccountAutocomplete';
@@ -9,17 +13,17 @@ import {
   ModalTitle,
   ModalHeader,
 } from '../common/Modal';
-import { View } from '../common/View';
 import { SectionLabel } from '../forms';
 import { useResponsive } from '../responsive/ResponsiveProvider';
 
-type AccountAutocompleteModalProps = {
-  autocompleteProps: ComponentPropsWithoutRef<typeof AccountAutocomplete>;
-  onClose: () => void;
-};
+type AccountAutocompleteModalProps = Extract<
+  ModalType,
+  { name: 'account-autocomplete' }
+>['options'];
 
 export function AccountAutocompleteModal({
-  autocompleteProps,
+  onSelect,
+  includeClosedAccounts,
   onClose,
 }: AccountAutocompleteModalProps) {
   const { t } = useTranslation();
@@ -35,7 +39,9 @@ export function AccountAutocompleteModal({
       onClose={onClose}
       containerProps={{
         style: {
-          height: isNarrowWidth ? '85vh' : 275,
+          height: isNarrowWidth
+            ? 'calc(var(--visual-viewport-height) * 0.85)'
+            : 275,
           backgroundColor: theme.menuAutoCompleteBackground,
         },
       }}
@@ -76,7 +82,9 @@ export function AccountAutocompleteModal({
                 closeOnBlur={false}
                 onClose={close}
                 {...defaultAutocompleteProps}
-                {...autocompleteProps}
+                onSelect={onSelect}
+                includeClosedAccounts={includeClosedAccounts}
+                value={null}
               />
             </View>
           </View>

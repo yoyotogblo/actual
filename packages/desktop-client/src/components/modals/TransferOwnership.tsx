@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
+import { Button } from '@actual-app/components/button';
+import { Stack } from '@actual-app/components/stack';
+import { styles } from '@actual-app/components/styles';
+import { Text } from '@actual-app/components/text';
+import { View } from '@actual-app/components/view';
+
+import { addNotification } from 'loot-core/client/actions';
+import { closeAndLoadBudget } from 'loot-core/client/budgets/budgetsSlice';
 import {
-  addNotification,
-  closeAndLoadBudget,
+  type Modal as ModalType,
   popModal,
-} from 'loot-core/client/actions';
+} from 'loot-core/client/modals/modalsSlice';
 import { send } from 'loot-core/platform/client/fetch';
 import { getUserAccessErrors } from 'loot-core/shared/errors';
 import { type Budget } from 'loot-core/types/budget';
@@ -14,18 +21,15 @@ import { type Handlers } from 'loot-core/types/handlers';
 
 import { useMetadataPref } from '../../hooks/useMetadataPref';
 import { useDispatch, useSelector } from '../../redux';
-import { styles, theme } from '../../style';
-import { Button } from '../common/Button2';
+import { theme } from '../../style';
 import { Modal, ModalCloseButton, ModalHeader } from '../common/Modal';
 import { Select } from '../common/Select';
-import { Stack } from '../common/Stack';
-import { Text } from '../common/Text';
-import { View } from '../common/View';
 import { FormField, FormLabel } from '../forms';
 
-type TransferOwnershipProps = {
-  onSave?: () => void;
-};
+type TransferOwnershipProps = Extract<
+  ModalType,
+  { name: 'transfer-ownership' }
+>['options'];
 
 export function TransferOwnership({
   onSave: originalOnSave,
@@ -186,7 +190,7 @@ export function TransferOwnership({
                 try {
                   await onSave();
                   await dispatch(
-                    closeAndLoadBudget((currentFile as Budget).id),
+                    closeAndLoadBudget({ fileId: (currentFile as Budget).id }),
                   );
                   close();
                 } catch (error) {

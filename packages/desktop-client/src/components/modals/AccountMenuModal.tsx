@@ -7,6 +7,13 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Button } from '@actual-app/components/button';
+import { Menu } from '@actual-app/components/menu';
+import { Popover } from '@actual-app/components/popover';
+import { styles } from '@actual-app/components/styles';
+import { View } from '@actual-app/components/view';
+
+import { type Modal as ModalType } from 'loot-core/client/modals/modalsSlice';
 import { type AccountEntity } from 'loot-core/types/models';
 
 import { useAccount } from '../../hooks/useAccount';
@@ -14,28 +21,20 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { useNotes } from '../../hooks/useNotes';
 import { SvgClose, SvgDotsHorizontalTriple, SvgLockOpen } from '../../icons/v1';
 import { SvgNotesPaper } from '../../icons/v2';
-import { styles, theme } from '../../style';
-import { Button } from '../common/Button2';
-import { Menu } from '../common/Menu';
+import { theme } from '../../style';
 import {
   Modal,
   ModalCloseButton,
   ModalHeader,
   ModalTitle,
 } from '../common/Modal';
-import { Popover } from '../common/Popover';
-import { View } from '../common/View';
 import { Notes } from '../Notes';
 import { validateAccountName } from '../util/accountValidation';
 
-type AccountMenuModalProps = {
-  accountId: string;
-  onSave: (account: AccountEntity) => void;
-  onCloseAccount: (accountId: string) => void;
-  onReopenAccount: (accountId: string) => void;
-  onEditNotes: (id: string) => void;
-  onClose?: () => void;
-};
+type AccountMenuModalProps = Extract<
+  ModalType,
+  { name: 'account-menu' }
+>['options'];
 
 export function AccountMenuModal({
   accountId,

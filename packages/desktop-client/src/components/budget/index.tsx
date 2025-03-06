@@ -2,6 +2,11 @@
 import React, { memo, useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { styles } from '@actual-app/components/styles';
+import { View } from '@actual-app/components/view';
+
+import { addNotification } from 'loot-core/client/actions';
+import { pushModal } from 'loot-core/client/modals/modalsSlice';
 import {
   applyBudgetAction,
   createCategory,
@@ -14,10 +19,9 @@ import {
   updateCategory,
   updateGroup,
 } from 'loot-core/client/queries/queriesSlice';
-import { addNotification, pushModal } from 'loot-core/src/client/actions';
-import { useSpreadsheet } from 'loot-core/src/client/SpreadsheetProvider';
-import { send } from 'loot-core/src/platform/client/fetch';
-import * as monthUtils from 'loot-core/src/shared/months';
+import { useSpreadsheet } from 'loot-core/client/SpreadsheetProvider';
+import { send } from 'loot-core/platform/client/fetch';
+import * as monthUtils from 'loot-core/shared/months';
 
 import { useCategories } from '../../hooks/useCategories';
 import { useGlobalPref } from '../../hooks/useGlobalPref';
@@ -25,8 +29,6 @@ import { useLocalPref } from '../../hooks/useLocalPref';
 import { useNavigate } from '../../hooks/useNavigate';
 import { useSyncedPref } from '../../hooks/useSyncedPref';
 import { useDispatch } from '../../redux';
-import { styles } from '../../style';
-import { View } from '../common/View';
 import { NamespaceContext } from '../spreadsheet/NamespaceContext';
 
 import { DynamicBudgetTable } from './DynamicBudgetTable';
@@ -190,12 +192,19 @@ function BudgetInner(props: BudgetInnerProps) {
 
     if (mustTransfer) {
       dispatch(
-        pushModal('confirm-category-delete', {
-          category: id,
-          onDelete: transferCategory => {
-            if (id !== transferCategory) {
-              dispatch(deleteCategory({ id, transferId: transferCategory }));
-            }
+        pushModal({
+          modal: {
+            name: 'confirm-category-delete',
+            options: {
+              category: id,
+              onDelete: transferCategory => {
+                if (id !== transferCategory) {
+                  dispatch(
+                    deleteCategory({ id, transferId: transferCategory }),
+                  );
+                }
+              },
+            },
           },
         }),
       );
@@ -225,10 +234,15 @@ function BudgetInner(props: BudgetInnerProps) {
 
     if (mustTransfer) {
       dispatch(
-        pushModal('confirm-category-delete', {
-          group: id,
-          onDelete: transferCategory => {
-            dispatch(deleteGroup({ id, transferId: transferCategory }));
+        pushModal({
+          modal: {
+            name: 'confirm-category-delete',
+            options: {
+              group: id,
+              onDelete: transferCategory => {
+                dispatch(deleteGroup({ id, transferId: transferCategory }));
+              },
+            },
           },
         }),
       );

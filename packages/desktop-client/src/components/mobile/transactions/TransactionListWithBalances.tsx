@@ -1,14 +1,17 @@
 import React, { type ComponentProps, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Label } from '@actual-app/components/label';
+import { styles } from '@actual-app/components/styles';
+import { View } from '@actual-app/components/view';
+
+import { type AccountEntity } from 'loot-core/types/models';
 import { type TransactionEntity } from 'loot-core/types/models/transaction';
 
 import { SelectedProvider, useSelected } from '../../../hooks/useSelected';
 import { SvgSearchAlternate } from '../../../icons/v2';
-import { styles, theme } from '../../../style';
+import { theme } from '../../../style';
 import { InputWithContent } from '../../common/InputWithContent';
-import { Label } from '../../common/Label';
-import { View } from '../../common/View';
 import type { Binding, SheetNames, SheetFields } from '../../spreadsheet';
 import { CellValue, CellValueText } from '../../spreadsheet/CellValue';
 import { useSheetValue } from '../../spreadsheet/useSheetValue';
@@ -89,6 +92,7 @@ type TransactionListWithBalancesProps = {
   onLoadMore: () => void;
   onOpenTransaction: (transaction: TransactionEntity) => void;
   onRefresh?: () => void;
+  account?: AccountEntity;
 };
 
 export function TransactionListWithBalances({
@@ -103,6 +107,7 @@ export function TransactionListWithBalances({
   onLoadMore,
   onOpenTransaction,
   onRefresh,
+  account,
 }: TransactionListWithBalancesProps) {
   const selectedInst = useSelected('transactions', [...transactions], []);
 
@@ -146,6 +151,7 @@ export function TransactionListWithBalances({
             isLoadingMore={isLoadingMore}
             onLoadMore={onLoadMore}
             onOpenTransaction={onOpenTransaction}
+            account={account}
           />
         </PullToRefresh>
       </>
