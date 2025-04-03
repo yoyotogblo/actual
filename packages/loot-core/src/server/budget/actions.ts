@@ -1,7 +1,10 @@
 // @ts-strict-ignore
 
+import * as asyncStorage from '../../platform/server/asyncStorage';
+import { getLocale } from '../../shared/locale';
 import * as monthUtils from '../../shared/months';
 import { integerToCurrency, safeNumber } from '../../shared/util';
+import { CategoryEntity } from '../../types/models';
 import * as db from '../db';
 import * as sheet from '../sheet';
 import { batchMessages } from '../sync';
@@ -61,8 +64,14 @@ type BudgetData = {
   amount: number;
 };
 
-function getBudgetData(table: string, month: string): Promise<BudgetData[]> {
-  return db.all(
+function getBudgetData<T extends BudgetTable>(
+  table: T,
+  month: string,
+): Promise<BudgetData[]> {
+  return db.all<
+    (db.DbReflectBudget | db.DbZeroBudget) &
+      Pick<db.DbViewCategory, 'is_income'>
+  >(
     `
     SELECT b.*, c.is_income FROM v_categories c
     LEFT JOIN ${table} b ON b.category = c.id
@@ -105,7 +114,7 @@ export function setBudget({
   month,
   amount,
 }: {
-  category: string;
+  category: CategoryEntity['id'];
   month: string;
   amount: unknown;
 }): Promise<void> {
@@ -233,7 +242,7 @@ export async function copySinglePreviousMonth({
 }
 
 export async function setZero({ month }: { month: string }): Promise<void> {
-  const categories = await db.all(
+  const categories = await db.all<db.DbViewCategory>(
     'SELECT * FROM v_categories WHERE tombstone = 0',
   );
 
@@ -252,7 +261,7 @@ export async function set3MonthAvg({
 }: {
   month: string;
 }): Promise<void> {
-  const categories = await db.all(
+  const categories = await db.all<db.DbViewCategory>(
     'SELECT * FROM v_categories WHERE tombstone = 0',
   );
 
@@ -295,7 +304,7 @@ export async function set12MonthAvg({
 }: {
   month: string;
 }): Promise<void> {
-  const categories = await db.all(
+  const categories = await db.all<db.DbViewCategory>(
     'SELECT * FROM v_categories WHERE tombstone = 0',
   );
 
@@ -314,7 +323,7 @@ export async function set6MonthAvg({
 }: {
   month: string;
 }): Promise<void> {
-  const categories = await db.all(
+  const categories = await db.all<db.DbViewCategory>(
     'SELECT * FROM v_categories WHERE tombstone = 0',
   );
 
@@ -400,15 +409,15 @@ export async function coverOverspending({
   from,
 }: {
   month: string;
-  to: string;
-  from: string;
+  to: CategoryEntity['id'] | 'to-budget';
+  from: CategoryEntity['id'] | 'to-budget' | 'overbudgeted';
 }): Promise<void> {
   const sheetName = monthUtils.sheetForMonth(month);
   const toBudgeted = await getSheetValue(sheetName, 'budget-' + to);
   const leftover = await getSheetValue(sheetName, 'leftover-' + to);
   const leftoverFrom = await getSheetValue(
     sheetName,
-    from === 'to-be-budgeted' ? 'to-budget' : 'leftover-' + from,
+    from === 'to-budget' ? 'to-budget' : 'leftover-' + from,
   );
 
   if (leftover >= 0 || leftoverFrom <= 0) {
@@ -418,7 +427,7 @@ export async function coverOverspending({
   const amountCovered = Math.min(-leftover, leftoverFrom);
 
   // If we are covering it from the to be budgeted amount, ignore this
-  if (from !== 'to-be-budgeted') {
+  if (from !== 'to-budget') {
     const fromBudgeted = await getSheetValue(sheetName, 'budget-' + from);
     await setBudget({
       category: from,
@@ -492,8 +501,8 @@ export async function transferCategory({
 }: {
   month: string;
   amount: number;
-  to: string;
-  from: string;
+  to: CategoryEntity['id'] | 'to-budget';
+  from: CategoryEntity['id'] | 'to-budget';
 }): Promise<void> {
   const sheetName = monthUtils.sheetForMonth(month);
   const fromBudgeted = await getSheetValue(sheetName, 'budget-' + from);
@@ -503,7 +512,7 @@ export async function transferCategory({
 
     // If we are simply moving it back into available cash to budget,
     // don't do anything else
-    if (to !== 'to-be-budgeted') {
+    if (to !== 'to-budget') {
       const toBudgeted = await getSheetValue(sheetName, 'budget-' + to);
       await setBudget({ category: to, month, amount: toBudgeted + amount });
     }
@@ -548,8 +557,8 @@ async function addMovementNotes({
 }: {
   month: string;
   amount: number;
-  to: 'to-be-budgeted' | 'overbudgeted' | string;
-  from: 'to-be-budgeted' | string;
+  to: CategoryEntity['id'] | 'to-budget' | 'overbudgeted';
+  from: CategoryEntity['id'] | 'to-budget';
 }) {
   const displayAmount = integerToCurrency(amount);
 
@@ -561,18 +570,23 @@ async function addMovementNotes({
     )?.note,
   );
 
-  const displayDay = monthUtils.format(monthUtils.currentDate(), 'MMMM dd');
+  const locale = getLocale(await asyncStorage.getItem('language'));
+  const displayDay = monthUtils.format(
+    monthUtils.currentDate(),
+    'MMMM dd',
+    locale,
+  );
   const categories = await db.getCategories(
-    [from, to].filter(c => c !== 'to-be-budgeted' && c !== 'overbudgeted'),
+    [from, to].filter(c => c !== 'to-budget' && c !== 'overbudgeted'),
   );
 
   const fromCategoryName =
-    from === 'to-be-budgeted'
+    from === 'to-budget'
       ? 'To Budget'
       : categories.find(c => c.id === from)?.name;
 
   const toCategoryName =
-    to === 'to-be-budgeted'
+    to === 'to-budget'
       ? 'To Budget'
       : to === 'overbudgeted'
         ? 'Overbudgeted'

@@ -11,19 +11,20 @@ import React, {
   useState,
 } from 'react';
 
+import { Button } from '@actual-app/components/button';
+import { useResponsive } from '@actual-app/components/hooks/useResponsive';
+import { SvgRemove } from '@actual-app/components/icons/v2';
+import { Input } from '@actual-app/components/input';
 import { Popover } from '@actual-app/components/popover';
 import { styles } from '@actual-app/components/styles';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import { css, cx } from '@emotion/css';
 import Downshift, { type StateChangeTypes } from 'downshift';
 
 import { getNormalisedString } from 'loot-core/shared/normalisation';
 
-import { SvgRemove } from '../../icons/v2';
-import { theme } from '../../style';
-import { Button } from '../common/Button';
-import { Input } from '../common/Input';
-import { useResponsive } from '../responsive/ResponsiveProvider';
+import { useProperFocus } from '../../hooks/useProperFocus';
 
 type CommonAutocompleteProps<T extends Item> = {
   focused?: boolean;
@@ -52,6 +53,7 @@ type CommonAutocompleteProps<T extends Item> = {
   clearOnBlur?: boolean;
   clearOnSelect?: boolean;
   closeOnBlur?: boolean;
+  closeOnSelect?: boolean;
   onClose?: () => void;
 };
 
@@ -231,6 +233,7 @@ function SingleAutocomplete<T extends Item>({
   clearOnBlur = true,
   clearOnSelect = false,
   closeOnBlur = true,
+  closeOnSelect = !clearOnSelect,
   onClose,
   value: initialValue,
 }: SingleAutocompleteProps<T>) {
@@ -255,6 +258,7 @@ function SingleAutocomplete<T extends Item>({
   };
 
   const triggerRef = useRef(null);
+  const itemsViewRef = useRef(null);
 
   const { isNarrowWidth } = useResponsive();
   const narrowInputStyle = isNarrowWidth
@@ -297,6 +301,8 @@ function SingleAutocomplete<T extends Item>({
   }
 
   const filtered = isChanged ? filteredSuggestions || suggestions : suggestions;
+  const inputRef = useRef(null);
+  useProperFocus(inputRef, focused);
 
   return (
     <Downshift
@@ -306,7 +312,9 @@ function SingleAutocomplete<T extends Item>({
 
         if (clearOnSelect) {
           setValue('');
-        } else {
+        }
+
+        if (closeOnSelect) {
           close();
         }
 
@@ -348,6 +356,7 @@ function SingleAutocomplete<T extends Item>({
             Downshift.stateChangeTypes.controlledPropUpdatedSelectedItem,
             // Do nothing if it is a "touch" selection event
             Downshift.stateChangeTypes.touchEnd,
+            Downshift.stateChangeTypes.mouseUp,
             // @ts-expect-error Types say there is no type
           ].includes(changes.type)
         ) {
@@ -395,7 +404,8 @@ function SingleAutocomplete<T extends Item>({
       onStateChange={changes => {
         if (
           !clearOnBlur &&
-          changes.type === Downshift.stateChangeTypes.mouseUp
+          (changes.type === Downshift.stateChangeTypes.mouseUp ||
+            changes.type === Downshift.stateChangeTypes.touchEnd)
         ) {
           return;
         }
@@ -452,6 +462,7 @@ function SingleAutocomplete<T extends Item>({
             {renderInput(
               getInputProps({
                 focused,
+                inputRef,
                 ...inputProps,
                 onFocus: e => {
                   inputProps.onFocus?.(e);
@@ -465,7 +476,15 @@ function SingleAutocomplete<T extends Item>({
                   e['preventDownshiftDefault'] = true;
                   inputProps.onBlur?.(e);
 
-                  if (!closeOnBlur) return;
+                  if (!closeOnBlur) {
+                    return;
+                  }
+
+                  if (itemsViewRef.current?.contains(e.relatedTarget)) {
+                    // Do not close when the user clicks on any of the items.
+                    e.stopPropagation();
+                    return;
+                  }
 
                   if (clearOnBlur) {
                     if (e.target.value === '') {
@@ -561,6 +580,7 @@ function SingleAutocomplete<T extends Item>({
             filtered.length > 0 &&
             (embedded ? (
               <View
+                ref={itemsViewRef}
                 style={{ ...styles.darkScrollbar, marginTop: 5 }}
                 data-testid="autocomplete"
               >
@@ -589,12 +609,14 @@ function SingleAutocomplete<T extends Item>({
                 }}
                 data-testid="autocomplete"
               >
-                {renderItems(
-                  filtered,
-                  getItemProps,
-                  highlightedIndex,
-                  inputValue,
-                )}
+                <View ref={itemsViewRef}>
+                  {renderItems(
+                    filtered,
+                    getItemProps,
+                    highlightedIndex,
+                    inputValue,
+                  )}
+                </View>
               </Popover>
             ))}
         </div>
@@ -621,7 +643,7 @@ function MultiItem({ name, onRemove }: MultiItemProps) {
       }}
     >
       {name}
-      <Button type="bare" style={{ marginLeft: 1 }} onClick={onRemove}>
+      <Button variant="bare" style={{ marginLeft: 1 }} onPress={onRemove}>
         <SvgRemove style={{ width: 8, height: 8 }} />
       </Button>
     </View>
@@ -644,6 +666,8 @@ function MultiAutocomplete<T extends Item>({
 }: MultiAutocompleteProps<T>) {
   const [focused, setFocused] = useState(false);
   const selectedItemIds = selectedItems.map(getItemId);
+  const inputRef = useRef(null);
+  useProperFocus(inputRef, focused);
 
   function onRemoveItem(id: T['id']) {
     const items = selectedItemIds.filter(i => i !== id);
@@ -711,6 +735,7 @@ function MultiAutocomplete<T extends Item>({
           })}
           <Input
             {...inputProps}
+            inputRef={inputRef}
             onKeyDown={e => onKeyDown(e, inputProps.onKeyDown)}
             onFocus={e => {
               setFocused(true);
@@ -755,7 +780,6 @@ export function AutocompleteFooter({
         flexShrink: 0,
         ...(embedded ? { paddingTop: 5 } : { padding: 5 }),
       }}
-      onMouseDown={e => e.preventDefault()}
     >
       {children}
     </View>
