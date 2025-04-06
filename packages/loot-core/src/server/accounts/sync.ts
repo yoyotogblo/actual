@@ -224,7 +224,7 @@ async function downloadSimpleFinTransactions(
         'X-ACTUAL-TOKEN': userToken,
       },
       // 5 minute timeout for batch sync, one minute for individual accounts
-      Array.isArray(acctId) ? 300000 : 60000,
+      Array.isArray(acctId) ? 600000 : 120000,
     );
   } catch (error) {
     console.error('Suspected timeout during bank sync:', error);
