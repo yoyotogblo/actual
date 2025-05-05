@@ -20,9 +20,6 @@ import { View } from '@actual-app/components/view';
 
 import { type Modal as ModalType } from 'loot-core/client/modals/modalsSlice';
 
-import { useCategory } from '../../hooks/useCategory';
-import { useCategoryGroup } from '../../hooks/useCategoryGroup';
-import { useNotes } from '../../hooks/useNotes';
 import {
   Modal,
   ModalCloseButton,
@@ -30,6 +27,10 @@ import {
   ModalTitle,
 } from '../common/Modal';
 import { Notes } from '../Notes';
+
+import { useCategory } from '@desktop-client/hooks/useCategory';
+import { useCategoryGroup } from '@desktop-client/hooks/useCategoryGroup';
+import { useNotes } from '@desktop-client/hooks/useNotes';
 
 type CategoryMenuModalProps = Extract<
   ModalType,
@@ -46,7 +47,7 @@ export function CategoryMenuModal({
 }: CategoryMenuModalProps) {
   const { t } = useTranslation();
   const category = useCategory(categoryId);
-  const categoryGroup = useCategoryGroup(category?.cat_group);
+  const categoryGroup = useCategoryGroup(category?.group);
   const originalNotes = useNotes(category.id);
 
   const onRename = newName => {

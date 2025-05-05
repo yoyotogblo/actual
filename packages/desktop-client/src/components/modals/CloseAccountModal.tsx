@@ -21,13 +21,14 @@ import { integerToCurrency } from 'loot-core/shared/util';
 import { type AccountEntity } from 'loot-core/types/models';
 import { type TransObjectLiteral } from 'loot-core/types/util';
 
-import { useAccounts } from '../../hooks/useAccounts';
-import { useCategories } from '../../hooks/useCategories';
 import { useDispatch } from '../../redux';
 import { AccountAutocomplete } from '../autocomplete/AccountAutocomplete';
 import { CategoryAutocomplete } from '../autocomplete/CategoryAutocomplete';
 import { Link } from '../common/Link';
 import { Modal, ModalCloseButton, ModalHeader } from '../common/Modal';
+
+import { useAccounts } from '@desktop-client/hooks/useAccounts';
+import { useCategories } from '@desktop-client/hooks/useCategories';
 
 function needsCategory(
   account: AccountEntity,
@@ -91,24 +92,27 @@ export function CloseAccountModal({
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const transferError = balance !== 0 && transferAccountId === '';
+    const transferError = balance !== 0 && !transferAccountId;
     setTransferError(transferError);
 
     const categoryError =
-      needsCategory(account, transferAccountId, accounts) && categoryId === '';
+      needsCategory(account, transferAccountId, accounts) && !categoryId;
     setCategoryError(categoryError);
 
-    if (!transferError && !categoryError) {
-      setLoading(true);
-
-      dispatch(
-        closeAccount({
-          id: account.id,
-          transferAccountId: transferAccountId || null,
-          categoryId: categoryId || null,
-        }),
-      );
+    if (transferError || categoryError) {
+      return false;
     }
+
+    setLoading(true);
+
+    dispatch(
+      closeAccount({
+        id: account.id,
+        transferAccountId: transferAccountId || null,
+        categoryId: categoryId || null,
+      }),
+    );
+    return true;
   };
 
   return (
@@ -150,8 +154,9 @@ export function CloseAccountModal({
             </Paragraph>
             <Form
               onSubmit={e => {
-                onSubmit(e);
-                close();
+                if (onSubmit(e)) {
+                  close();
+                }
               }}
             >
               {balance !== 0 && (

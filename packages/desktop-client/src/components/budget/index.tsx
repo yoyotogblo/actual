@@ -23,11 +23,6 @@ import { useSpreadsheet } from 'loot-core/client/SpreadsheetProvider';
 import { send } from 'loot-core/platform/client/fetch';
 import * as monthUtils from 'loot-core/shared/months';
 
-import { useCategories } from '../../hooks/useCategories';
-import { useGlobalPref } from '../../hooks/useGlobalPref';
-import { useLocalPref } from '../../hooks/useLocalPref';
-import { useNavigate } from '../../hooks/useNavigate';
-import { useSyncedPref } from '../../hooks/useSyncedPref';
 import { useDispatch } from '../../redux';
 import { NamespaceContext } from '../spreadsheet/NamespaceContext';
 
@@ -37,6 +32,12 @@ import { EnvelopeBudgetProvider } from './envelope/EnvelopeBudgetContext';
 import * as trackingBudget from './tracking/TrackingBudgetComponents';
 import { TrackingBudgetProvider } from './tracking/TrackingBudgetContext';
 import { prewarmAllMonths, prewarmMonth } from './util';
+
+import { useCategories } from '@desktop-client/hooks/useCategories';
+import { useGlobalPref } from '@desktop-client/hooks/useGlobalPref';
+import { useLocalPref } from '@desktop-client/hooks/useLocalPref';
+import { useNavigate } from '@desktop-client/hooks/useNavigate';
+import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 
 type TrackingReportComponents = {
   SummaryComponent: typeof trackingBudget.BudgetSummary;
@@ -163,7 +164,7 @@ function BudgetInner(props: BudgetInnerProps) {
     const cats = await send('get-categories');
     const exists =
       cats.grouped
-        .filter(g => g.id === category.cat_group)[0]
+        .filter(g => g.id === category.group)[0]
         .categories.filter(
           c => c.name.toUpperCase() === category.name.toUpperCase(),
         )
@@ -179,7 +180,7 @@ function BudgetInner(props: BudgetInnerProps) {
       dispatch(
         createCategory({
           name: category.name,
-          groupId: category.cat_group,
+          groupId: category.group,
           isIncome: category.is_income,
           isHidden: category.hidden,
         }),

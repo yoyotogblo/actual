@@ -21,7 +21,7 @@ import {
   SimpleFinBatchSyncResponse,
   TransactionEntity,
 } from '../../types/models';
-import { runQuery } from '../aql';
+import { aqlQuery } from '../aql';
 import * as db from '../db';
 import { runMutator } from '../mutators';
 import { post } from '../post';
@@ -90,7 +90,7 @@ async function updateAccountNotesWithBalance(id, balance, balanceDate) {
 
 async function getAccountOldestTransaction(id): Promise<TransactionEntity> {
   return (
-    await runQuery(
+    await aqlQuery(
       q('transactions')
         .filter({
           account: id,
@@ -388,17 +388,17 @@ async function normalizeBankSyncTransactions(transactions, acctId) {
   const payeesToCreate = new Map();
 
   const [customMappingsRaw, importPending, importNotes] = await Promise.all([
-    runQuery(
+    aqlQuery(
       q('preferences')
         .filter({ id: `custom-sync-mappings-${acctId}` })
         .select('value'),
     ).then(data => data?.data?.[0]?.value),
-    runQuery(
+    aqlQuery(
       q('preferences')
         .filter({ id: `sync-import-pending-${acctId}` })
         .select('value'),
     ).then(data => String(data?.data?.[0]?.value ?? 'true') === 'true'),
-    runQuery(
+    aqlQuery(
       q('preferences')
         .filter({ id: `sync-import-notes-${acctId}` })
         .select('value'),
@@ -633,7 +633,7 @@ export async function matchTransactions(
 ) {
   console.log('Performing transaction reconciliation matching');
 
-  const reimportDeleted = await runQuery(
+  const reimportDeleted = await aqlQuery(
     q('preferences')
       .filter({ id: `sync-reimport-deleted-${acctId}` })
       .select('value'),

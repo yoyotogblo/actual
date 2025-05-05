@@ -24,7 +24,7 @@ import Downshift, { type StateChangeTypes } from 'downshift';
 
 import { getNormalisedString } from 'loot-core/shared/normalisation';
 
-import { useProperFocus } from '../../hooks/useProperFocus';
+import { useProperFocus } from '@desktop-client/hooks/useProperFocus';
 
 type CommonAutocompleteProps<T extends Item> = {
   focused?: boolean;
@@ -461,7 +461,6 @@ function SingleAutocomplete<T extends Item>({
           <View ref={triggerRef} style={{ flexShrink: 0 }}>
             {renderInput(
               getInputProps({
-                focused,
                 inputRef,
                 ...inputProps,
                 onFocus: e => {
