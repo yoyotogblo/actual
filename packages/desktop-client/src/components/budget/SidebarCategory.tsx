@@ -6,6 +6,7 @@ import { Button } from '@actual-app/components/button';
 import { SvgCheveronDown } from '@actual-app/components/icons/v1';
 import { Menu } from '@actual-app/components/menu';
 import { Popover } from '@actual-app/components/popover';
+import { TextOneLine } from '@actual-app/components/text-one-line';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
@@ -14,11 +15,10 @@ import {
   type CategoryEntity,
 } from 'loot-core/types/models';
 
-import { NotesButton } from '../NotesButton';
-import { InputCell } from '../table';
-
 import { CategoryAutomationButton } from './goals/CategoryAutomationButton';
 
+import { NotesButton } from '@desktop-client/components/NotesButton';
+import { InputCell } from '@desktop-client/components/table';
 import { useContextMenu } from '@desktop-client/hooks/useContextMenu';
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useGlobalPref } from '@desktop-client/hooks/useGlobalPref';
@@ -56,7 +56,7 @@ export function SidebarCategory({
   onHideNewCategory,
 }: SidebarCategoryProps) {
   const { t } = useTranslation();
-  const goalTemplatesUIEnabled = useFeatureFlag('goalTemplatesUIEnabled');
+  const isGoalTemplatesUIEnabled = useFeatureFlag('goalTemplatesUIEnabled');
   const [categoryExpandedStatePref] = useGlobalPref('categoryExpandedState');
   const categoryExpandedState = categoryExpandedStatePref ?? 0;
 
@@ -79,17 +79,7 @@ export function SidebarCategory({
       ref={triggerRef}
       onContextMenu={handleContextMenu}
     >
-      <div
-        data-testid="category-name"
-        style={{
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          minWidth: 0,
-        }}
-      >
-        {category.name}
-      </div>
+      <TextOneLine data-testid="category-name">{category.name}</TextOneLine>
       <View style={{ flexShrink: 0, marginLeft: 5 }}>
         <Button
           variant="bare"
@@ -139,7 +129,7 @@ export function SidebarCategory({
         </Popover>
       </View>
       <View style={{ flex: 1 }} />
-      {!goalsShown && goalTemplatesUIEnabled && (
+      {!goalsShown && isGoalTemplatesUIEnabled && (
         <View style={{ flexShrink: 0 }}>
           <CategoryAutomationButton
             style={dragging && { color: 'currentColor' }}

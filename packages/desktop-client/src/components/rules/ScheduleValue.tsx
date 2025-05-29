@@ -3,8 +3,6 @@ import React, { useMemo } from 'react';
 import { AnimatedLoading } from '@actual-app/components/icons/AnimatedLoading';
 import { View } from '@actual-app/components/view';
 
-import { useSchedules } from 'loot-core/client/data-hooks/schedules';
-import { getPayeesById } from 'loot-core/client/queries/queriesSlice';
 import { q } from 'loot-core/shared/query';
 import { describeSchedule } from 'loot-core/shared/schedules';
 import { type ScheduleEntity } from 'loot-core/types/models';
@@ -12,6 +10,8 @@ import { type ScheduleEntity } from 'loot-core/types/models';
 import { Value } from './Value';
 
 import { usePayees } from '@desktop-client/hooks/usePayees';
+import { useSchedules } from '@desktop-client/hooks/useSchedules';
+import { getPayeesById } from '@desktop-client/queries/queriesSlice';
 
 type ScheduleValueProps = {
   value: ScheduleEntity;

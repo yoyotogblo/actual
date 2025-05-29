@@ -16,8 +16,6 @@ import { Tooltip } from '@actual-app/components/tooltip';
 import { View } from '@actual-app/components/view';
 import * as d from 'date-fns';
 
-import { useWidget } from 'loot-core/client/data-hooks/widget';
-import { addNotification } from 'loot-core/client/notifications/notificationsSlice';
 import { send } from 'loot-core/platform/client/fetch';
 import * as monthUtils from 'loot-core/shared/months';
 import { amountToCurrency } from 'loot-core/shared/util';
@@ -26,25 +24,30 @@ import {
   type RuleConditionEntity,
 } from 'loot-core/types/models';
 
-import { useDispatch } from '../../../redux';
-import { EditablePageHeaderTitle } from '../../EditablePageHeaderTitle';
-import { AppliedFilters } from '../../filters/AppliedFilters';
-import { FilterButton } from '../../filters/FiltersMenu';
-import { MobileBackButton } from '../../mobile/MobileBackButton';
-import { MobilePageHeader, Page, PageHeader } from '../../Page';
-import { PrivacyFilter } from '../../PrivacyFilter';
-import { SpendingGraph } from '../graphs/SpendingGraph';
-import { LegendItem } from '../LegendItem';
-import { LoadingIndicator } from '../LoadingIndicator';
-import { ModeButton } from '../ModeButton';
-import { calculateSpendingReportTimeRange } from '../reportRanges';
-import { createSpendingSpreadsheet } from '../spreadsheets/spending-spreadsheet';
-import { useReport } from '../useReport';
-import { fromDateRepr } from '../util';
-
-import { useFilters } from '@desktop-client/hooks/useFilters';
+import { EditablePageHeaderTitle } from '@desktop-client/components/EditablePageHeaderTitle';
+import { AppliedFilters } from '@desktop-client/components/filters/AppliedFilters';
+import { FilterButton } from '@desktop-client/components/filters/FiltersMenu';
+import { MobileBackButton } from '@desktop-client/components/mobile/MobileBackButton';
+import {
+  MobilePageHeader,
+  Page,
+  PageHeader,
+} from '@desktop-client/components/Page';
+import { PrivacyFilter } from '@desktop-client/components/PrivacyFilter';
+import { SpendingGraph } from '@desktop-client/components/reports/graphs/SpendingGraph';
+import { LegendItem } from '@desktop-client/components/reports/LegendItem';
+import { LoadingIndicator } from '@desktop-client/components/reports/LoadingIndicator';
+import { ModeButton } from '@desktop-client/components/reports/ModeButton';
+import { calculateSpendingReportTimeRange } from '@desktop-client/components/reports/reportRanges';
+import { createSpendingSpreadsheet } from '@desktop-client/components/reports/spreadsheets/spending-spreadsheet';
+import { useReport } from '@desktop-client/components/reports/useReport';
+import { fromDateRepr } from '@desktop-client/components/reports/util';
 import { useLocale } from '@desktop-client/hooks/useLocale';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
+import { useRuleConditionFilters } from '@desktop-client/hooks/useRuleConditionFilters';
+import { useWidget } from '@desktop-client/hooks/useWidget';
+import { addNotification } from '@desktop-client/notifications/notificationsSlice';
+import { useDispatch } from '@desktop-client/redux';
 
 export function Spending() {
   const params = useParams();
@@ -76,7 +79,7 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
     onDelete: onDeleteFilter,
     onUpdate: onUpdateFilter,
     onConditionsOpChange,
-  } = useFilters<RuleConditionEntity>(
+  } = useRuleConditionFilters<RuleConditionEntity>(
     widget?.meta?.conditions,
     widget?.meta?.conditionsOp,
   );
@@ -517,17 +520,17 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
                         style={{ marginBottom: 5, minWidth: 210 }}
                         left={
                           <Block>
-                            {compare === monthUtils.currentMonth()
+                            {compareTo === monthUtils.currentMonth()
                               ? t('Spent {{monthYearFormatted}} MTD:', {
                                   monthYearFormatted: monthUtils.format(
-                                    compare,
+                                    compareTo,
                                     'MMM, yyyy',
                                     locale,
                                   ),
                                 })
                               : t('Spent {{monthYearFormatted}}:', {
                                   monthYearFormatted: monthUtils.format(
-                                    compare,
+                                    compareTo,
                                     'MMM, yyyy',
                                     locale,
                                   ),
